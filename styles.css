@@ -1,0 +1,157 @@
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #2a2a2a;
+            color: #33ff33;
+            font-family: 'Courier New', monospace;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+            transition: all 3s ease;
+        }
+
+        body.deteriorating {
+            background: #1a1a1a;
+            color: #33cc33;
+        }
+
+        body.collapsing {
+            background: #0a0a0a;
+            color: #339933;
+        }
+
+        body.critical {
+            animation: screenFlicker 0.1s infinite;
+        }
+
+        @keyframes screenFlicker {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.95; }
+        }
+
+        #game-container {
+            max-width: 700px;
+            width: 100%;
+            border: 2px solid #33ff33;
+            padding: 30px;
+            box-shadow: 0 0 20px rgba(51, 255, 51, 0.3);
+            background: rgba(0, 0, 0, 0.3);
+        }
+
+        #story-log {
+            font-size: 15px;
+            line-height: 1.8;
+            margin-bottom: 30px;
+            min-height: 400px;
+            max-height: 400px;
+            overflow-y: auto;
+            padding-right: 10px;
+        }
+
+        #story-log::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        #story-log::-webkit-scrollbar-track {
+            background: #1a1a1a;
+        }
+
+        #story-log::-webkit-scrollbar-thumb {
+            background: #33ff33;
+        }
+
+        .story-line {
+            margin: 10px 0;
+            opacity: 0;
+            animation: fadeInLine 0.5s forwards;
+        }
+
+        @keyframes fadeInLine {
+            to { opacity: 1; }
+        }
+
+        .story-line.glitch {
+            animation: textGlitch 0.3s infinite;
+        }
+
+        @keyframes textGlitch {
+            0% { transform: translate(0); }
+            25% { transform: translate(-1px, 1px); }
+            50% { transform: translate(1px, -1px); }
+            75% { transform: translate(-1px, -1px); }
+            100% { transform: translate(0); }
+        }
+
+        .story-line.event {
+            color: #ffff33;
+        }
+
+        #choices {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 2px solid #33ff33;
+        }
+
+        button {
+            background: transparent;
+            color: #33ff33;
+            border: 1px solid #33ff33;
+            padding: 12px 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: left;
+            position: relative;
+        }
+
+        button:hover:not(:disabled) {
+            background: rgba(51, 255, 51, 0.1);
+            padding-left: 30px;
+        }
+
+        button:hover:not(:disabled)::before {
+            content: '>';
+            position: absolute;
+            left: 15px;
+        }
+
+        button:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+            color: #336633;
+            border-color: #336633;
+        }
+
+        button.danger {
+            color: #ff3333;
+            border-color: #ff3333;
+        }
+
+        button.danger:hover:not(:disabled) {
+            background: rgba(255, 51, 51, 0.1);
+        }
+
+        .cooldown-text {
+            font-size: 12px;
+            opacity: 0.6;
+            margin-left: 10px;
+        }
+
+        #time-display {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 13px;
+            opacity: 0.7;
+            letter-spacing: 2px;
+        }
