@@ -157,3 +157,38 @@
             letter-spacing: 2px;
         }
       
+        /* Botão com cooldown */
+        button.cooldown {
+            position: relative;
+            overflow: hidden;
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        button {
+    position: relative;
+    overflow: hidden;
+}
+
+button::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: var(--cooldown-progress, 0%);
+    height: 100%;
+    background: rgba(0, 0, 0, 0.4);
+    transition: width 1s linear;
+    pointer-events: none;
+    z-index: 1;
+}
+
+button:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+button span {
+    position: relative;
+    z-index: 2;
+}

@@ -22,6 +22,7 @@
             dogEventShown: false,
             phoneEventShown: false,
             mirrorEventShown: false,
+            ignoredWarningEvent: false,
 
             //fases do jogo
             spriteCount: 0, maxSprites: 5,
@@ -40,86 +41,146 @@
 
         // Cooldowns globais para ações (em turnos segundos)
         const cooldowns = {
-            coffeeCooldown: 0,
-            spriteCooldown: 0,
-            mapCooldown: 0,
-            characterCooldown: 0,
-            dialogueCooldown: 0,
-            testCooldown: 0,
-            rebugCooldown: 0,
-            pauseCooldown: 0,
-            helpCooldown: 0,
+            makeCoffeeCooldown: 0,
+            drinkCoffeeCooldown: 0,
+            makeSpriteCooldown: 0,
+            makeMapCooldown: 0,
+            makeCharacterCooldown: 0,
+            makeDialogueCooldown: 0,
+            testGameCooldown: 0,
+            rebugGameCooldown: 0,
+            buildGameCooldown: 0,
+            takePauseCooldown: 0,
+            askForHelpCooldown: 0,
         };
 
+        //flag para evitar múltiplas ações simultâneas
+        let actionInProgress = false;
 
         // Desabilita todos os botões para evitar cliques múltiplos
         function disableAllButtons() {
+            actionInProgress = true;
             const buttons = document.querySelectorAll('#choices button');
             buttons.forEach(btn => btn.disabled = true);
         }
 
+
         // Regras para disponibilidade de tarefas 
         const taskRules = {
-            sprite: {
+            // Utilitários / ações de jogador
+            makeCoffee: {
+                prerequisite: (s) => s.coffeeBrewTime === 0 && (s.coffees || 0) === 0,
+                countKey: null,
+                limitKey: null,
+                cooldownKey: 'makeCoffeeCooldown'
+            },
+
+            drinkCoffee: {
+                prerequisite: (s) => (s.coffees || 0) > 0,
+                countKey: null,
+                limitKey: null,
+                cooldownKey: 'drinkCoffeeCooldown'
+            },
+
+            takePause: {
+                prerequisite: (s) => (s.turnsPlayed || 0) >= 6,
+                countKey: null,
+                limitKey: null,
+                cooldownKey: 'takePauseCooldown'
+            },
+
+            askForHelp: {
+                prerequisite: (s) => (s.turnsPlayed || 0) >= 4 && (s.energy || 0) < 35 && s.lastHelpDay !== s.day,
+                countKey: null,
+                limitKey: null,
+                cooldownKey: 'askForHelpCooldown'
+            },
+
+            ignoreWarning: {
+                prerequisite: (s) => (s.turnsPlayed || 0) >= 4 && (s.energy || 0) < 35,
+                countKey: null,
+                limitKey: null,
+                cooldownKey: 'ignoreWarningCooldown'
+            },
+
+            // Fases do jogo
+            makeSprite: {
                 prerequisite: (s) => s.coffeeLocked === false,
                 countKey: 'spriteCount',
-                limitKey: 'maxSprites'
+                limitKey: 'maxSprites',
+                cooldownKey: 'makeSpriteCooldown'
             },
 
-            map: {
+            makeMap: {
                 prerequisite: (s) => (s.spriteCount || 0) >= (s.maxSprites || 0),
                 countKey: 'mapCount',
-                limitKey: 'maxMaps'
+                limitKey: 'maxMaps',
+                cooldownKey: 'makeMapCooldown'
             },
 
-            character: {
+            makeCharacter: {
                 prerequisite: (s) => (s.mapCount || 0) >= (s.maxMaps || 0),
                 countKey: 'characterCount',
-                limitKey: 'maxCharacters'
+                limitKey: 'maxCharacters',
+                cooldownKey: 'makeCharacterCooldown'
             },
 
-            dialogue: {
+            makeDialogue: {
                 prerequisite: (s) => (s.characterCount || 0) >= (s.maxCharacters || 0),
                 countKey: 'dialogueCount',
-                limitKey: 'maxDialogues'
+                limitKey: 'maxDialogues',
+                cooldownKey: 'makeDialogueCooldown'
             },
 
-            test: {
+            testGame: {
                 prerequisite: (s) => (s.dialogueCount || 0) >= 3,
                 countKey: 'testCount',
-                limitKey: 'maxTests'
+                limitKey: 'maxTests',
+                cooldownKey: 'testGameCooldown'
             },
 
-            rebug: {
+            rebugGame: {
                 prerequisite: (s) => (s.testCount || 0) >= 1,
                 countKey: 'rebugCount',
-                limitKey: 'maxRebugs'
+                limitKey: 'maxRebugs',
+                cooldownKey: 'rebugGameCooldown'
             },
 
-            build: {
+            buildGame: {
                 prerequisite: (s) => (s.rebugCount || 0) >= 1 && (s.energy || 0) >= 40 && (s.sanity || 0) >= 50,
                 countKey: 'buildCount',
-                limitKey: 'maxBuilds'
+                limitKey: 'maxBuilds',
+                cooldownKey: 'buildGameCooldown'
             },
 
-            publish: {
+            publishGame: {
                 prerequisite: (s) => (s.buildCount || 0) >= 1,
                 countKey: null,
-                limitKey: null
+                limitKey: null,
+                cooldownKey: 'publishGameCooldown'
             }
     };
 
+        // Verifica se uma tarefa está disponível com base nas regras definidas
         function isTaskAvailable(taskName, s = state) {
             const rule = taskRules[taskName];
             if (!rule) return false;
-            if (!rule.prerequisite) return true;
-            if (!rule.prerequisite(s)) return false;
-            if (!rule.countKey) return true;
+
+            // checa prerequisite se existir
+            if (rule.prerequisite && !rule.prerequisite(s)) return false;
+
+            // determina a chave do cooldown (usa rule.cooldownKey se fornecido)
+            const cdKey = rule.cooldownKey || `${taskName}Cooldown`;
+            const cdOk = (cooldowns[cdKey] || 0) === 0;
+
+            // se não há contagem/limite, só retorna com base no cooldown
+            if (!rule.countKey) return cdOk;
+
+            // caso haja contagem/limite, checa isso também
             const count = s[rule.countKey] || 0;
             const limit = rule.limitKey ? (s[rule.limitKey] || Infinity) : Infinity;
-            return count < limit;
-        }
-
+            return count < limit && cdOk;
+            } 
         
         // Registro simples das linhas mostradas no log de história.
         // Guarda apenas as strings para possíveis usos futuros (debug, replays, savestates).
@@ -209,7 +270,7 @@
 
                 state.energy = Math.min(100, state.energy + 50);
                 state.sanity = Math.min(100, state.sanity + 10);
-                cooldowns.coffeeCooldown = 0;
+                cooldowns.drinkCoffeeCooldown = 0;
                 state.coffeeBrewTime = 0;
 
                 renderChoices();
@@ -222,38 +283,60 @@
 
         /**
          * Centraliza o fim de turno: incrementa turnsPlayed, atualiza tempo,
-         * decrementa cooldowns e aplica clamps em energia/sanidade.
+         * 
          * Chame essa função ao final de qualquer ação que consome um turno.
          */
 
-       // ==== ⏳ AVANÇO AUTOMÁTICO DO JOGO POR TEMPO REAL ====
-        function endTurn(minutes = 1) {
-            // 🕒 Registra que um turno passou
-            state.turnsPlayed++;
 
-            // 🕰️ Atualiza o relógio do jogo
-            updateTime(minutes);
 
-            // 🔁 Decrementa cooldowns em segundos
+
+       // ==== ⏳ AVANÇO AUTOMÁTICO DO TURNO POR TEMPO REAL ====
+        let tickRunning = false; // verdadeiro se o tick estiver ativo
+
+        function tick() {
+            let hasActiveCooldowns = false;
+            
             for (let key in cooldowns) {
                 if (cooldowns[key] > 0) {
                     cooldowns[key]--;
+                    hasActiveCooldowns = true;
                 }
             }
-
-            // ☕ Gerencia preparo do café
+            
             if (state.coffeeBrewTime > 0) {
                 state.coffeeBrewTime--;
-
+                hasActiveCooldowns = true;
+                
                 if (state.coffeeBrewTime === 0) {
                     state.coffees += 15;
-                    cooldowns.coffee = 0;
                     addStoryLine("O café está pronto.");
-                    renderChoices(); // mostra botão “tomar café”
                 }
             }
+            
+            if (hasActiveCooldowns) {
+                renderChoices();
+                setTimeout(tick, 1000);
+            } else {
+                tickRunning = false; // libera quando acabar
+                renderChoices();
+            }
+        }
 
-            // 🧠 Garante que energia e sanidade fiquem dentro dos limites
+        function endTurn(minutes = 1) {
+            state.turnsPlayed++;
+            updateTime(minutes);
+            
+            // Só inicia tick se não estiver rodando
+            if (!tickRunning) {
+                const hasAnyCooldown = Object.values(cooldowns).some(cd => cd > 0) || state.coffeeBrewTime > 0;
+                if (hasAnyCooldown) {
+                    tickRunning = true;
+                    setTimeout(tick, 1000);
+                }
+            }
+            
+            actionInProgress = false;
+
             state.energy = clamp(state.energy, 0, 100);
             state.sanity = clamp(state.sanity, 0, 100);
         }
@@ -293,140 +376,242 @@
             //evento do cachorro
             if (eventType === 'dog') {
                 createButton('ir ver', () => {
-                    addStoryLine("");
-                    addStoryLine("você abre a porta. olha ao redor.");
-
-                    if (Math.random() < 0.2) {
-                    // Pegou o competidor no flagra
+                    disableAllButtons(); // ← ADICIONE ISSO
+                    
                     delayedLines([
                         "",
-                        "um vulto corre pelo corredor.",
-                        "você grita. ele foge.",
-                        "era um competidor tentando sabotar sua energia.",
-                        "você evita a perda e se sente mais alerta.",
-                        ""
-                    ]);
-                    state.sanity += 10;
-                    state.energy += 10;
-                    } else {
-                    // Era só o cachorro
-                    delayedLines([
-                        "",
-                        "não tem ninguém. só o cachorro abanando o rabo.",
-                        "você fala pra ele ficar quieto.",
-                        "algo estranho paira no ar, mas você não consegue identificar.",
-                        ""
-                    ]);
-                    state.sanity += 15;
-                    state.energy += 5;
-                    }
-
-                    setTimeout(() => renderChoices(), 2000);
+                        "você abre a porta. olha ao redor."
+                    ], () => {
+                        // ← Callback executa DEPOIS das linhas acima
+                        
+                        if (Math.random() < 0.2) {
+                            // Pegou o competidor no flagra
+                            delayedLines([
+                                "",
+                                "um vulto corre pelo corredor.",
+                                "você grita. ele foge.",
+                                "era um competidor tentando sabotar sua energia.",
+                                "você evita a perda e se sente mais alerta.",
+                                ""
+                            ], () => {
+                                // ← Modifica state DENTRO do callback
+                                state.sanity += 10;
+                                state.energy += 10;
+                                
+                                if (checkGameOver()) return;
+                                endTurn(10); 
+                                renderChoices();
+                            });
+                        } else {
+                            // Era só o cachorro
+                            delayedLines([
+                                "",
+                                "não tem ninguém. só o cachorro abanando o rabo.",
+                                "você fala pra ele ficar quieto.",
+                                "algo estranho paira no ar, mas você não consegue identificar.",
+                                ""
+                            ], () => {
+                                // ← Modifica state DENTRO do callback
+                                state.sanity += 15;
+                                state.energy += 5;
+                                
+                                if (checkGameOver()) return;
+                                endTurn(5); 
+                                renderChoices();
+                            });
+                        }
+                    });
                 });
 
                 createButton('ignorar', () => {
+                    disableAllButtons(); // ← ADICIONE ISSO
+
                     delayedLines([
                         "",
                         "você decide ignorar.",
                         "os latidos continuam.",
                         "mas você foca no seu trabalho.",
                         ""
-                    ]);
-                    if (Math.random() < 0.2) {
-                    // Sabotagem acontece
-                    delayedLines([
-                        "",
-                        "de repente, a luz pisca.",
-                        "a energia cai. tudo desliga.",
-                        "você perdeu parte do progresso.",
-                        ""
-                    ]);
-                    state.progress = Math.max(0, state.progress - 20);
-                    state.sanity -= 15;
-                    } else {
-                    // Nada acontece
-                    delayedLines([
-                        "",
-                        "nada acontece. só silêncio."
-                    ]);
-                    state.sanity -= 5;
-                    }
+                    ], () => {
+                        // ← Callback executa DEPOIS das linhas acima
 
-                    setTimeout(() => renderChoices(), 2000);
-                }, true);
-            }
+                        if (Math.random() < 0.2) {
+                            // Sabotagem acontece
+                            delayedLines([
+                                "",
+                                "de repente, a luz pisca.",
+                                "a energia cai. tudo desliga.",
+                                "você perdeu parte do progresso.",
+                                ""
+                            ], () => {
+                                // ← Modifica state DENTRO do callback
+                                state.progress = Math.max(0, state.progress - 20);
+                                state.sanity -= 15;
 
-            //evento do celular
-            else if (eventType === 'phone') {
-                createButton('atender', () => {
-                    delayedLines([
-                        "",
-                        "você atende. uma voz familiar.",
-                        "'como você está?'",
-                        "você conversa por alguns minutos.",
-                        "você se sente um pouco melhor.",
-                        ""
-                    ]);
-                    state.sanity += 10;
-                    state.energy += 5;
-                    updateTime(20);
-                    setTimeout(() => renderChoices(), 2000);
-                });
-                createButton('ignorar', () => {
-                    delayedLines([
-                        "",
-                        "você decide não atender.",
-                        "o telefone para de vibrar.",
-                        "silêncio novamente, você se sente sozinho.",
-                        ""
-                    ]);
-                    state.sanity -= 10;
-                    setTimeout(() => renderChoices(), 2000);
-                }, true);
+                                if (checkGameOver()) return;
+                                endTurn(5);
+                                renderChoices();
+                            });
+                        } else {
+                            // Nada acontece
+                            delayedLines([
+                                "",
+                                "nada acontece. só silêncio.",
+                                ""
+                            ], () => {
+                                // ← Modifica state DENTRO do callback
+                                state.sanity -= 5;
 
-                //evento do espelho
-            } else if (eventType === 'mirror') {
-                createButton('encarar o reflexo', () => {
-                    delayedLines([
-                        "",
-                        "você encara o espelho.",
-                        "por um instante, o reflexo não acompanha seu movimento.",
-                        "ele sorri. você não.",
-                        "um arrepio percorre sua espinha.",
-                        ""
-                    ]);
-                    state.sanity -= 12;
-                    setTimeout(() => renderChoices(), 2000);
+                                if (checkGameOver()) return;
+                                endTurn(5);
+                                renderChoices();
+                            });
+                        }
+                    });
                 });
 
-                createButton('desviar o olhar', () => {
-                    delayedLines([
-                        "",
-                        "você desvia o olhar.",
-                        "não quer mais ver aquilo.",
-                        "mas sente que algo ficou preso lá dentro.",
-                        ""
-                    ]);
-                    state.sanity -= 3;
-                    setTimeout(() => renderChoices(), 2000);
-                });
+                // === EVENTO CELULAR ===
 
-                createButton('cobrir o espelho', () => {
-                    delayedLines([
-                        "",
-                        "você pega um pano e cobre o espelho.",
-                        "não quer mais ver aquilo.",
-                        "mas sente que algo ficou preso lá dentro.",
-                        ""
-                    ]); 
-                    state.sanity -= 5;
-                    state.energy -= 5;
-                    setTimeout(() => renderChoices(), 2000);
-                });
+                } else if (eventType === 'phone') {
+                    createButton('atender', () => {
+                        disableAllButtons();
+
+                        delayedLines([
+                            "",
+                            "você atende. uma voz familiar.",
+                            "'como você está?'",
+                            "você conversa por alguns minutos.",
+                            "você se sente um pouco melhor.",
+                            ""
+                        ], () => {
+                            state.sanity += 10;
+                            state.energy += 5;
+                            updateTime(20);
+                            if (checkGameOver()) return;
+                            endTurn(20);
+                            renderChoices();
+                        });
+                    });
+
+                    createButton('ignorar', () => {
+                        disableAllButtons();
+                        delayedLines([
+                            "",
+                            "você decide não atender.",
+                            "o telefone para de vibrar.",
+                            "silêncio novamente, você se sente sozinho.",
+                            ""
+                        ], () => {
+                            state.sanity -= 10;
+                            if (checkGameOver()) return;
+                            endTurn(5);
+                            renderChoices();
+                        });
+                    });
+
+                // === EVENTO ESPELHO ===
+                } else if (eventType === 'mirror') {
+                    createButton('encarar o reflexo', () => {
+                        disableAllButtons();
+                        delayedLines([
+                            "",
+                            "você encara o espelho.",
+                            "por um instante, o reflexo não acompanha seu movimento.",
+                            "ele sorri. você não.",
+                            "um arrepio percorre sua espinha.",
+                            ""
+                        ], () => {
+                            state.sanity -= 12;
+                            if (checkGameOver()) return;
+                            endTurn(5);
+                            renderChoices();
+                        });
+                    });
+
+                    createButton('desviar o olhar', () => {
+                        disableAllButtons();
+                        delayedLines([
+                            "",
+                            "você desvia o olhar.",
+                            "não quer mais ver aquilo.",
+                            "mas sente que algo ficou preso lá dentro.",
+                            ""
+                        ], () => {
+                            state.sanity -= 3;
+                            if (checkGameOver()) return;
+                            endTurn(5);
+                            renderChoices();
+                        });
+                    });
+
+                    createButton('cobrir o espelho', () => {
+                        disableAllButtons();
+                        delayedLines([
+                            "",
+                            "você pega um pano e cobre o espelho.",
+                            "não quer mais ver aquilo.",
+                            "mas sente que algo ficou preso lá dentro.",
+                            ""
+                        ], () => {
+                            state.sanity -= 5;
+                            state.energy -= 5;
+                            if (checkGameOver()) return;
+                            endTurn(5);
+                            renderChoices();
+                        });
+                    });
                 }
 
-        }
+                //evento de aviso de cansaço
+                if (eventType === 'ignoreWarning')  {
+                    createButton('ignorar e continuar', () => {
+                        disableAllButtons();
+                        delayedLines([
+                            "",
+                            "você ignora o cansaço.",
+                            "ignora a dor de cabeça.",
+                            "ignora tudo.",
+                            "menos o código.",
+                            ""
+                        ], () => {
+                            state.ignoredWarnings++;
+                            state.progress += 12;
+                            state.sanity -= 20;
+                            state.energy -= 10;
+                            cooldowns.ignoreWarningCooldown = 10;
 
+                            if (state.ignoredWarnings >= 2) {
+                                const lines = document.querySelectorAll('.story-line');
+                                lines.forEach(line => {
+                                    if (Math.random() < 0.5) line.classList.add('glitch');
+                                });
+                            }
+
+                            if (checkGameOver()) return;
+                            endTurn(2);
+                            renderChoices();
+                        });
+                    });
+
+                    createButton('pausar por um momento', () => {
+                        disableAllButtons();
+                        delayedLines([
+                            "",
+                            "você respira fundo.",
+                            "fecha os olhos por alguns segundos.",
+                            "o mundo desacelera.",
+                            "mas o código espera.",
+                            ""
+                        ], () => {
+                        state.energy += 10;
+                        state.sanity += 10;
+                        if (checkGameOver()) return;
+                        endTurn(10);
+                        renderChoices();
+                    });
+                });
+            }
+        }
 
         //cria o botão de escolha  DANGER
         function createButton(text, onClick, isDanger = false) {
@@ -437,128 +622,127 @@
             document.getElementById('choices').appendChild(button);
         }
 
+
         function renderChoices() {
             const choicesDiv = document.getElementById('choices');
             choicesDiv.innerHTML = '';
 
             if (checkRandomEvents()) return;
+            if (actionInProgress) return;
 
             // === Ações utilitárias ====
 
             // Fazer mais café
-            if (cooldowns.coffeeCooldown === 0 && state.coffeeBrewTime === 0 && state.coffeeLocked && state.coffees === 0) {
-                const button = document.createElement('button');
-                button.textContent = 'fazer café';
-                button.onclick = () => makeCoffee();
-                choicesDiv.appendChild(button);
-            }
+            if (isTaskAvailable('makeCoffee')) {
+                const btn = document.createElement('button');
+                btn.textContent = (cooldowns.makeCoffeeCooldown || 0) > 0 ? `fazer café` : 'fazer café';
+                btn.disabled = (cooldowns.makeCoffeeCooldown || 0) > 0;
+                if ((cooldowns.makeCoffeeCooldown || 0) === 0) btn.onclick = makeCoffee;
+                choicesDiv.appendChild(btn);
+                }
 
-            // Café sendo preparado
-            if (cooldowns.coffeeBrewTime > 0) {
-                const button = document.createElement('button');
-                button.textContent = `preparando café... (${state.coffeeBrewTime})`;
-                button.disabled = true;
-                choicesDiv.appendChild(button);
-            }
+            // Café sendo preparado (caso especial — mantém a exibição específica)
+            if ((state.coffeeBrewTime || 0) > 0) {
+                const btn = document.createElement('button');
+                btn.textContent = `preparando café...`;
+                btn.disabled = true;
+                choicesDiv.appendChild(btn);
+                }
 
             // Café pronto para tomar
-            if (cooldowns.coffeeCooldown === 0 && state.coffees > 0) {
-                const button = document.createElement('button');
-                button.textContent = 'tomar café';
-                button.onclick = () => drinkCoffee();
-                choicesDiv.appendChild(button);
-            }
-
-
-           // Pausa
-            if (state.turnsPlayed >= 6) {
-                const button = document.createElement('button');
-                if (cooldowns.pauseCooldown > 0) {
-                    button.textContent = `fazer uma pausa (aguarde ${cooldowns.pauseCooldown})`;
-                    button.disabled = true;
-                } else {
-                    button.textContent = 'fazer uma pausa';
-                    button.onclick = () => takePause();
-                }
-                choicesDiv.appendChild(button);
-            }
-
-            // Opções críticas: se mais de 4 turnos jogados e energia baixa
-            // opção chamar ajuda só uma vez ao dia
-            // opção ignorar o cansaço sempre disponível
-            if (state.turnsPlayed >= 4 && state.energy < 35) {
-                if (state.lastHelpDay !== state.day) {
-                    const button = document.createElement('button');
-                    button.textContent = 'pedir ajuda';
-                    button.onclick = () => {
-                        askForHelp();
-                        state.lastHelpDay = state.day; // registra o dia em que pediu ajuda
-                    };
-                    choicesDiv.appendChild(button);
+            if (isTaskAvailable('drinkCoffee')) {
+                const btn = document.createElement('button');
+                btn.textContent = (cooldowns.drinkCoffeeCooldown || 0) > 0 ? `tomar café` : 'tomar café';
+                btn.disabled = (cooldowns.drinkCoffeeCooldown || 0) > 0;
+                if ((cooldowns.drinkCoffeeCooldown || 0) === 0) btn.onclick = drinkCoffee;
+                choicesDiv.appendChild(btn);
                 }
 
-                const button = document.createElement('button');
-                button.textContent = 'ignorar o cansaço';
-                button.className = 'danger';
-                button.onclick = () => ignoreWarning();
-                choicesDiv.appendChild(button);
-            }
+            // Pausa
+            if (isTaskAvailable('takePause')) {
+                const btn = document.createElement('button');
+                btn.textContent = (cooldowns.takePauseCooldown || 0) > 0 ? `fazer uma pausa` : 'fazer uma pausa';
+                btn.disabled = (cooldowns.takePauseCooldown || 0) > 0;
+                if ((cooldowns.takePauseCooldown || 0) === 0 && isTaskAvailable('takePause')) btn.onclick = takePause;
+                choicesDiv.appendChild(btn);
+                }
+
+            // Pedir ajuda
+            if (isTaskAvailable('askForHelp')) {
+                const btn = document.createElement('button');
+                btn.textContent = (cooldowns.askForHelpCooldown || 0) > 0 ? `pedir ajuda` : 'pedir ajuda';
+                btn.disabled = (cooldowns.askForHelpCooldown || 0) > 0;
+                if ((cooldowns.askForHelpCooldown || 0) === 0 && isTaskAvailable('askForHelp')) {
+                    btn.onclick = () => { askForHelp(); state.lastHelpDay = state.day; };
+                }
+                choicesDiv.appendChild(btn);
+                }
+
+            // Aviso de cansaço    
+            if (isTaskAvailable('ignoreWarning')) {
+                    state.ignoredWarningEvent = true;
+                    addStoryLine("", true);
+                    addStoryLine("Você se sente muito cansado, seu corpo pede uma pausa.", true);
+                    addStoryLine("", true);
+                    showEventChoice('ignoreWarning');
+                    return true;
+                }
 
 
             // ==== 🎯 FASES DO JOGO ====
-            if (isTaskAvailable('sprite')) {
+            if (isTaskAvailable('makeSprite')) {
                 const btn = document.createElement('button');
-                btn.textContent = cooldowns.spriteCooldown > 0 ? `fazer sprite (aguarde ${cooldowns.spriteCooldown})` : 'fazer sprite';
-                btn.disabled = cooldowns.spriteCooldown > 0;
-                if (cooldowns.spriteCooldown === 0) btn.onclick = makeSprite;
+                btn.textContent = cooldowns.makeSpriteCooldown > 0 ? `fazer sprite` : 'fazer sprite';
+                btn.disabled = cooldowns.makeSpriteCooldown > 0;
+                if (cooldowns.makeSpriteCooldown === 0) btn.onclick = makeSprite;
                 choicesDiv.appendChild(btn);
             }
 
-            if (isTaskAvailable('map')) {
+            if (isTaskAvailable('makeMap')) {
                 const btn = document.createElement('button');
-                btn.textContent = cooldowns.mapCooldown > 0 ? `fazer mapa (aguarde ${cooldowns.mapCooldown})` : 'fazer mapa';
-                btn.disabled = cooldowns.mapCooldown > 0;
-                if (cooldowns.mapCooldown === 0) btn.onclick = makeMap;
+                btn.textContent = cooldowns.makeMapCooldown > 0 ? `fazer mapa` : 'fazer mapa';
+                btn.disabled = cooldowns.makeMapCooldown > 0;
+                if (cooldowns.makeMapCooldown === 0) btn.onclick = makeMap;
                 choicesDiv.appendChild(btn);
             }
 
-            if (isTaskAvailable('character')) {
+            if (isTaskAvailable('makeCharacter')) {
                 const btn = document.createElement('button');
-                btn.textContent = cooldowns.characterCooldown > 0 ? `fazer personagem (aguarde ${cooldowns.characterCooldown})` : 'fazer personagem';
-                btn.disabled = cooldowns.characterCooldown > 0;
-                if (cooldowns.characterCooldown === 0) btn.onclick = makeCharacter;
+                btn.textContent = cooldowns.makeCharacterCooldown > 0 ? `fazer personagem` : 'fazer personagem';
+                btn.disabled = cooldowns.makeCharacterCooldown > 0;
+                if (cooldowns.makeCharacterCooldown === 0) btn.onclick = makeCharacter;
                 choicesDiv.appendChild(btn);
             }
 
-            if (isTaskAvailable('dialogue')) {
+            if (isTaskAvailable('makeDialogue')) {
                 const btn = document.createElement('button');
-                btn.textContent = cooldowns.dialogueCooldown > 0 ? `fazer diálogo (aguarde ${cooldowns.dialogueCooldown})` : 'fazer diálogo';
-                btn.disabled = cooldowns.dialogueCooldown > 0;
-                if (cooldowns.dialogueCooldown === 0) btn.onclick = makeDialogue;
+                btn.textContent = cooldowns.makeDialogueCooldown > 0 ? `fazer diálogo` : 'fazer diálogo';
+                btn.disabled = cooldowns.makeDialogueCooldown > 0;
+                if (cooldowns.makeDialogueCooldown === 0) btn.onclick = makeDialogue;
                 choicesDiv.appendChild(btn);
             }
 
-            if (isTaskAvailable('test')) {
+            if (isTaskAvailable('testGame')) {
                 const btn = document.createElement('button');
-                btn.textContent = cooldowns.testCooldown > 0 ? `fazer teste (aguarde ${cooldowns.testCooldown})` : 'fazer teste';
-                btn.disabled = cooldowns.testCooldown > 0;
-                if (cooldowns.testCooldown === 0) btn.onclick = makeTest;
+                btn.textContent = cooldowns.testGameCooldown > 0 ? `fazer teste` : 'fazer teste';
+                btn.disabled = cooldowns.testGameCooldown > 0;
+                if (cooldowns.testGameCooldown === 0) btn.onclick = testGame;
                 choicesDiv.appendChild(btn);
             }
 
-            if (isTaskAvailable('build')) {
+            if (isTaskAvailable('buildGame')) {
                 const btn = document.createElement('button');
-                btn.textContent = cooldowns.buildCooldown > 0 ? `fazer build (aguarde ${cooldowns.buildCooldown})` : 'fazer build';
-                btn.disabled = cooldowns.buildCooldown > 0;
-                if (cooldowns.buildCooldown === 0) btn.onclick = makeBuild;
+                btn.textContent = cooldowns.buildGameCooldown > 0 ? `fazer build` : 'fazer build';
+                btn.disabled = cooldowns.buildGameCooldown > 0;
+                if (cooldowns.buildGameCooldown === 0) btn.onclick = buildGame;
                 choicesDiv.appendChild(btn);
             }
 
-            if (isTaskAvailable('publish')) {
+            if (isTaskAvailable('publishGame')) {
                 const btn = document.createElement('button');
-                btn.textContent = cooldowns.publishCooldown > 0 ? `fazer publish (aguarde ${cooldowns.publishCooldown})` : 'fazer publicação';
-                btn.disabled = cooldowns.publishCooldown > 0;
-                if (cooldowns.publishCooldown === 0) btn.onclick = makePublish;
+                btn.textContent = cooldowns.publishGameCooldown > 0 ? `fazer publish` : 'fazer publicação';
+                btn.disabled = cooldowns.publishGameCooldown > 0;
+                if (cooldowns.publishGameCooldown === 0) btn.onclick = publishGame;
                 choicesDiv.appendChild(btn);
             }
 
@@ -593,17 +777,30 @@
                 }
 
                 // ==== ⏳ INICIA PREPARO DO CAFÉ ====
-                state.coffeeBrewTime = 10;       // tempo real em segundos
+                state.coffeeBrewTime = 5;    // tempo real em segundos
                 state.coffeeLocked = true;
 
-                // Café ficará pronto automaticamente após o tempo
-                setTimeout(() => {
-                    state.coffeeBrewTime = 0;
-                    state.coffees += 15;
-                    addStoryLine("o café está pronto.");
-                    endTurn(15);
-                    renderChoices();
-                }, 5000); // 5 segundos reais
+
+                // Libera os botões AGORA (o café vai preparar em background)
+                
+                    renderChoices(); // Mostra "preparando café..."
+
+                    // limpa timeout anterior se existir
+                    if (state._coffeeTimeout) {
+                        clearTimeout(state._coffeeTimeout);
+                        delete state._coffeeTimeout;
+                    }
+
+                    // Café ficará pronto automaticamente após o tempo
+                    setTimeout(() => {
+                        state.coffeeBrewTime = 0;
+                        state.coffees += 15;
+                        addStoryLine("o café está pronto.");
+
+                        if (checkGameOver()) return;
+                        endTurn(15);
+                        renderChoices();
+                    }, 5000); // 5 segundos reais
             });
         }
 
@@ -611,7 +808,14 @@
 
             // ==== ☕ TOMAR CAFÉ ====
         function drinkCoffee() {
+
+            if (!isTaskAvailable('drinkCoffee')) {
+                addStoryLine("Essa tarefa não está disponível no momento.");
+                return;
+            }
+
             disableAllButtons();  
+
             const blocks = [
                 ["você toma o café.", "está quente. amargo.", "você sente o corpo despertar um pouco."],
                 ["mais café.", "o gosto já é familiar.", "como um ritual."],
@@ -627,14 +831,15 @@
                 const boost = Math.floor(state.coffees * 2);
                 state.energy = Math.min(100, state.energy + boost);
                 state.sanity -= 2;
-                cooldowns.coffeeCooldown = 3;
-                state.coffees--;
+                cooldowns.drinkCoffeeCooldown = 3;
                 state.coffeeLocked = false;
-                endTurn(3);
+                state.coffees--;
+                
 
-                setTimeout(() => {
-                    renderChoices();
-                }, 3000);
+                if (checkGameOver()) return;
+                endTurn(3);
+                renderChoices();
+
             });
         }
 
@@ -643,7 +848,7 @@
 
         function makeSprite() {
 
-            if (!isTaskAvailable('sprite')) {
+            if (!isTaskAvailable('makeSprite')) {
                 addStoryLine("Essa tarefa não está disponível no momento.");
                 return;
             }
@@ -668,18 +873,18 @@
             state.spriteCount++;    
             state.spriteMade = true;
             state.energy -= 10;
-            cooldowns.spriteCooldown = 5;
+            cooldowns.makeSpriteCooldown = 5;
+
+            if (checkGameOver()) return;
             endTurn(5);
-            
-            checkGameOver();
-            setTimeout(() => renderChoices(), 5000);
+            renderChoices();
         });
         }
 
         // ==== FASE DE MAPA (FASE 02) ====
     
         function makeMap() {
-            if (!isTaskAvailable('map')) {
+            if (!isTaskAvailable('makeMap')) {
                 addStoryLine("Essa tarefa não está disponível no momento.");
                 return;
             }
@@ -701,17 +906,17 @@
                 state.mapCount++;
                 state.mapMade = true;
                 state.energy -= 10;
-                cooldowns.mapCooldown = 5;
+                cooldowns.makeMapCooldown = 5;
+                
+                if (checkGameOver()) return;
                 endTurn(5);
-
-                checkGameOver();
-                setTimeout(() => renderChoices(), 5000);
+                renderChoices();
             });
         }
 
         // ==== FASE DE PERSONAGENS (FASE 03) ====
         function makeCharacter() {
-            if (!isTaskAvailable('character')) {
+            if (!isTaskAvailable('makeCharacter')) {
                 addStoryLine("Essa tarefa não está disponível no momento.");
                 return;
             }
@@ -731,16 +936,17 @@
                 state.characterCount++;
                 state.characterMade = true;
                 state.energy -= 10;
-                cooldowns.characterCooldown = 5;
-                endTurn(5); 
-                checkGameOver();
-                setTimeout(() => renderChoices(), 5000);
+                cooldowns.makeCharacterCooldown = 5;
+                 
+                if (checkGameOver()) return;
+                renderChoices();
+                endTurn(20);
             });
         }
 
         // ==== FASE DE DIÁLOGOS (FASE 04) ====
         function makeDialogue() {
-            if (!isTaskAvailable('dialogue')) {
+            if (!isTaskAvailable('makeDialogue')) {
                 addStoryLine("Essa tarefa não está disponível no momento.");
                 return;
             }
@@ -763,17 +969,18 @@
                 state.dialogueCount++;
                 state.dialogueMade = true;
                 state.energy -= 10;
-                cooldowns.dialogueCooldown = 5;
-                endTurn(5);
-                checkGameOver();
-                setTimeout(() => renderChoices(), 5000);
+                cooldowns.makeDialogueCooldown = 5;
+
+                if (checkGameOver()) return;
+                endTurn(20); 
+                renderChoices();
             });
         }
 
         // === FASE DE TESTE (FASE 05) ===
 
         function testGame() {
-            if (!isTaskAvailable('test')) {
+            if (!isTaskAvailable('testGame')) {
                 addStoryLine("Essa tarefa não está disponível no momento.");
                 return;
             }
@@ -797,8 +1004,11 @@
                 state.energy -= 15;
                 state.sanity -= 5;
                 state.testSessions++;
-                cooldowns.testCooldown = 2;
+                cooldowns.testGameCooldown = 2;
+
+                if (checkGameOver()) return;
                 endTurn(30);
+                renderChoices();
 
                 if (state.testSessions >= 3 && state.phase === 'beginning') {
                     state.phase = 'deteriorating';
@@ -811,15 +1021,12 @@
                 if (state.sanity < 20 || state.energy < 20) {
                     document.body.classList.add('critical');
                 }
-
-                checkGameOver();
-                setTimeout(() => renderChoices(), 1500);
             });
         }
 
         // ==== DEBUG: FASE DE REBUG (FASE 06) ====
         function rebugGame() {
-            if (!isTaskAvailable('rebug')) {
+            if (!isTaskAvailable('rebugGame')) {
                 addStoryLine("Essa tarefa não está disponível no momento.");
                 return;
             }
@@ -839,15 +1046,74 @@
                 state.rebugCount++;
                 state.energy -= 15;
                 state.sanity -= 15;
-                cooldowns.rebugCooldown = 3;
-                endTurn(15);
+                cooldowns.rebugGameCooldown = 3;
 
-                checkGameOver();
-                setTimeout(() => renderChoices(), 6000);
+                if (checkGameOver()) return;
+                endTurn(25);
+                renderChoices();
             });
         }
 
-        // === OPÇÕES EXTRAS === 
+        // ====  🎮 FAZER BUILD (FASE 07) ====
+        function buildGame() {
+            if (!isTaskAvailable('buildGame')) {
+                addStoryLine("Essa tarefa não está disponível no momento.");
+                return;
+            }
+
+            //TODO: VERIFICAR PARA QUE ULTIMA FRASE SEJA A QUE DEU CERTO
+
+            disableAllButtons();
+            const blocks = [
+                ["você inicia o processo de build.", "aguarda ansiosamente.", "o build falha."],
+                ["você verifica as configurações.", "tudo parece certo.", "o build falha."],
+                ["você tenta novamente.", "dessa vez, o build passa.", "você respira aliviado."],
+            ];
+
+            const index = Math.floor(Math.random() * blocks.length);
+            const selectedBlock = blocks[index];
+
+            delayedLines(["", ...selectedBlock, ""], () => {
+                state.buildCount++;
+                state.energy -= 20;
+                state.sanity -= 10;
+                cooldowns.buildGameCooldown = 5;
+
+                if (checkGameOver()) return;
+                endTurn(30);
+                renderChoices();
+            });
+        }
+
+        // ====  📢 FAZER PUBLISH (FASE 08) ====
+        function publishGame() {
+            if (!isTaskAvailable('publishGame')) {
+                addStoryLine("Essa tarefa não está disponível no momento.");
+                return;
+            }
+            disableAllButtons();
+            const blocks = [
+                ["você clica no botão de publicar.", "aguarda ansiosamente.", "o jogo é publicado."],
+                ["você verifica as configurações de publicação.", "tudo parece certo.", "o jogo é publicado."],
+                ["você tenta novamente.", "dessa vez, a publicação é bem-sucedida.", "você respira aliviado."],
+            ];
+
+            const index = Math.floor(Math.random() * blocks.length);
+            const selectedBlock = blocks[index];
+
+            delayedLines(["", ...selectedBlock, ""], () => {
+                state.publishCount++;
+                state.energy -= 25;
+                state.sanity -= 15;
+                // Sem cooldown pois nao é feito duas vezes
+
+                if (checkGameOver()) return;
+                endTurn(40);
+                renderChoices();
+            });
+        }
+
+        // === OPÇÕES EXTRAS ===
         function takePause() {
             disableAllButtons();
             const blocks = [
@@ -862,12 +1128,14 @@
             delayedLines(["", ...selectedBlock, ""], () => {
                 state.energy += 15;
                 state.sanity += 15;
-                cooldowns.pauseCooldown = 20;
+                cooldowns.takePauseCooldown = 20;
+
+                if (checkGameOver()) return; 
                 endTurn(15);
-            
-            setTimeout(() => renderChoices(), 4000);
-        }); 
-    }
+                renderChoices();
+                
+            });
+        }
 
         // ==== 📞 PEDIR AJUDA ====
         function askForHelp() {
@@ -886,47 +1154,19 @@
             const selectedBlock = blocks[index];
 
             delayedLines(["", ...selectedBlock, ""], () => {
-            state.askedForHelp = true;
-            state.sanity += 25;
-            state.progress += 20;
-            state.energy += 10;
-            cooldowns.helpCooldown = 60;
-            endTurn(20);
-            
-            checkGameOver();
-            setTimeout(() => renderChoices(), 5000);
+                state.askedForHelp = true;
+                state.sanity += 25;
+                state.progress += 20;
+                state.energy += 10;
+                cooldowns.askForHelpCooldown = 60;
+                
+                if (checkGameOver()) return;
+                endTurn(20);
+                renderChoices();
+                
         }); 
     }   
 
-        // ==== ⚠️ IGNORAR AVISOS DE CANSANÇO ====
-        function ignoreWarning() {
-            disableAllButtons();
-            delayedLines([
-                "",
-                "você ignora o cansaço.",
-                "ignora a dor de cabeça.",
-                "ignora tudo.",
-                "menos o código.",
-                "",
-            ], () => {
-                
-            state.ignoredWarnings++;
-            state.progress += 12;
-            state.sanity -= 20;
-            state.energy -= 10;
-            endTurn(35);
-            
-            if (state.ignoredWarnings >= 2) {
-                const lines = document.querySelectorAll('.story-line');
-                lines.forEach(line => {
-                    if (Math.random() < 0.5) line.classList.add('glitch');
-                });
-            }
-            
-            checkGameOver();
-            setTimeout(() => renderChoices(), 2500);
-        });
-    }
 
 
         // ==== 🎯 CHECAGEM DE FIM DE JOGO ====
