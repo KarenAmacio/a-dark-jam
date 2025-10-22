@@ -71,6 +71,7 @@
             margin: 10px 0;
             opacity: 0;
             animation: fadeInLine 0.5s forwards;
+            min-height: 1em;
         }
 
         @keyframes fadeInLine {
@@ -155,3 +156,4 @@
             opacity: 0.7;
             letter-spacing: 2px;
         }
+      
