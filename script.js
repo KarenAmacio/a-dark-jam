@@ -34,8 +34,8 @@
             dialogueCount: 0, maxDialogues: 6,
             testCount: 0, maxTests: 4,
             rebugCount: 0, maxRebugs: 3,
-            buildCount: 0, maxBuilds: 2,
-            publishCount: 0,
+            buildCount: 0, buildPassed: false, maxBuilds: 1,
+            publishCount: 0, publishPassed: false,
 
             // Sistema de save
             lastSave: null, // guarda o estado do último save
@@ -65,6 +65,7 @@
             takePauseCooldown: 0,
             askForHelpCooldown: 0,
             coffeeBrewTime: 0,
+            publishGameCooldown: 0,
 
             saveEventCooldown: 0,        // Cooldown de 50 segundos para save
             warningEventCooldown: 0,     // Cooldown de 15 segundos para warning
@@ -189,12 +190,12 @@
             buildGame: {
                 prerequisite: (s) => (s.rebugCount || 0) >= (s.maxRebugs || 0)  && (s.energy || 0) >= 40 && (s.sanity || 0) >= 50,
                 countKey: 'buildCount',
-                limitKey: 'maxBuilds',
+                limitKey: null,
                 cooldownKey: 'buildGameCooldown'
             },
 
             publishGame: {
-                prerequisite: (s) => (s.buildCount || 0) >= (s.maxBuilds)  && (s.energy || 0) >= 40 && (s.sanity || 0) >= 50,
+                prerequisite: (s) => s.buildPassed === true && (s.energy || 0) >= 40 && (s.sanity || 0) >= 50,
                 countKey: null,
                 limitKey: null,
                 cooldownKey: 'publishGameCooldown'
@@ -398,7 +399,7 @@
                 let delay = 0;
                 lines.forEach((line, i) => {
                     setTimeout(() => addStoryLine(line), delay);
-                    delay += 250;
+                    delay += 600;
                 });
 
                 if (finalCallback) {
@@ -916,7 +917,6 @@
             }
 
             // Café sendo preparado (caso especial)
-            console.log('coffeeBrewTime:', state.coffeeBrewTime);
             if ((state.coffeeBrewTime || 0) > 0) {
                 createButtonWithCooldown(
                     `preparando café...`, // ← ERA ISSO, NÃO SPRITE!
@@ -1090,7 +1090,7 @@
             delayedLines(["", ...selectedBlock, ""], () => {
                 const boost = Math.floor(state.coffees * 2);
                 state.energy = Math.min(100, state.energy + boost);
-                state.sanity -= 2;
+                state.sanity -= 5;
                 cooldowns.drinkCoffeeCooldown = 5;
                 state.coffeeLocked = false;
                 state.coffees--;
@@ -1315,23 +1315,35 @@
         }
 
         // ====  🎮 FAZER BUILD (FASE 07) ====
-        function buildGame() {
+       function buildGame() {
             if (!isTaskAvailable('buildGame')) {
                 addStoryLine("Essa tarefa não está disponível no momento.");
                 return;
             }
 
-            //TODO: VERIFICAR PARA QUE ULTIMA FRASE SEJA A QUE DEU CERTO
-
             disableAllButtons();
+
             const blocks = [
                 ["você inicia o processo de build.", "aguarda ansiosamente.", "o build falha."],
                 ["você verifica as configurações.", "tudo parece certo.", "o build falha."],
-                ["você tenta novamente.", "dessa vez, o build passa.", "você respira aliviado."],
+                ["você tenta novamente.", "dessa vez, o build passa.", "você respira aliviado."]
             ];
 
-            const index = Math.floor(Math.random() * blocks.length);
-            const selectedBlock = blocks[index];
+            let selectedBlock;
+
+            // Verifica se o build pode passar
+            const buildSucceeded = (state.rebugCount || 0) >= (state.maxRebugs || 0)
+                && (state.energy || 0) >= 40
+                && (state.sanity || 0) >= 50;
+
+            if (buildSucceeded) {
+                selectedBlock = blocks[2]; // sucesso
+                state.buildPassed = true;  // ← aqui você marca que o build passou
+            } else if (state.buildCount === 0) {
+                selectedBlock = blocks[0]; // primeira falha
+            } else {
+                selectedBlock = blocks[1]; // segunda falha
+            }
 
             delayedLines(["", ...selectedBlock, ""], () => {
                 state.buildCount++;
@@ -1345,28 +1357,38 @@
             });
         }
 
+
         // ====  📢 FAZER PUBLISH (FASE 08) ====
         function publishGame() {
             if (!isTaskAvailable('publishGame')) {
                 addStoryLine("Essa tarefa não está disponível no momento.");
                 return;
             }
+            
             disableAllButtons();
-            const blocks = [
-                ["você clica no botão de publicar.", "aguarda ansiosamente.", "o jogo é publicado."],
-                ["você verifica as configurações de publicação.", "tudo parece certo.", "o jogo é publicado."],
-                ["você tenta novamente.", "dessa vez, a publicação é bem-sucedida.", "você respira aliviado."],
-            ];
-
-            const index = Math.floor(Math.random() * blocks.length);
-            const selectedBlock = blocks[index];
-
+            
+            // Verifica se pode publicar
+            const publishSucceeded = state.buildPassed === true
+                && (state.energy || 0) >= 40
+                && (state.sanity || 0) >= 50;
+            
+            let selectedBlock;
+            
+            if (publishSucceeded) {
+                selectedBlock = ["você clica no botão de publicar.", "tudo está pronto.", "o jogo é publicado com sucesso."];
+                state.publishPassed = true;
+            } else if (state.publishCount === 0) {
+                selectedBlock = ["você tenta publicar.", "mas algo está faltando.", "a publicação falha."];
+            } else {
+                selectedBlock = ["você verifica tudo novamente.", "ainda não está pronto.", "a publicação falha."];
+            }
+            
             delayedLines(["", ...selectedBlock, ""], () => {
                 state.publishCount++;
                 state.energy -= 25;
                 state.sanity -= 15;
-                // Sem cooldown pois nao é feito duas vezes
-
+                cooldowns.publishGameCooldown = 8;
+                
                 if (checkGameOver()) return;
                 endTurn(40);
                 renderChoices();
@@ -1431,8 +1453,8 @@
 
         // ==== 🎯 CHECAGEM DE FIM DE JOGO ====
         function checkGameOver() {
-            // Verifica se publicou o jogo
-            if (state.publishCount >= 1) {
+                // Verifica se publicou o jogo COM SUCESSO
+            if (state.publishCount >= 1 && state.publishPassed) {
                 const publishedOnTime = state.day <= 2;
                 
                 if (publishedOnTime) {
@@ -1442,6 +1464,7 @@
                 }
                 return true;
             }
+
 
             // Verifica se perdeu sanidade/energia
             if (state.energy <= 0 || state.sanity <= 0) {
