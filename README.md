@@ -13,8 +13,143 @@
 
 ---
 
-## 🚀 Como jogar
+## 🎮 Como jogar
+🎯 Objetivo
+Você tem 2 dias para criar e publicar seu jogo para a game jam. Precisa completar todas as etapas de desenvolvimento enquanto gerencia sua energia e sanidade.
 
+⚡ Recursos Principais
+Energia
+
+- Cai ao fazer tarefas
+- Se zerar = Game Over
+- Recupera: tomando café, dormindo, fazendo pausas
+
+Sanidade
+
+- Cai ao trabalhar muito, ignorar avisos
+- Se zerar = Game Over
+- Recupera: pausas, pedindo ajuda, eventos positivos
+
+Tempo
+
+- Cada ação consome minutos/horas
+- Às 24h você dorme automaticamente
+- Prazo final: Dia 2, 20h
+
+
+📋 Sequência de Tarefas do Jogo
+Você precisa completar estas etapas em ordem:
+
+- Fazer Café (primeiro!) → Desbloqueia tudo
+- Sprites (5x) → Desenhar personagens
+- Mapas (3x) → Criar cenários
+- Personagens (4x) → Desenvolver NPCs
+- Diálogos (6x) → Escrever conversas
+- Testar (4x) → Buscar bugs
+- Corrigir Bugs (3x) → Consertar problemas
+- Build (2x) → Compilar o jogo (precisa: energia ≥40, sanidade ≥50)
+- Publicar (1x) → Finalizar! 
+
+
+🎮 Ações Disponíveis
+
+☕ Fazer/Tomar Café
+
+- Prepara em 5 segundos (tempo real)
+- Recupera muita energia
+- Reduz um pouco de sanidade
+
+⏸️ Fazer Pausa
+
+- Recupera energia e sanidade
+- Tem cooldown longo
+- Use estrategicamente!
+
+📞 Pedir Ajuda
+
+- Só 1x por dia
+- Recupera muita sanidade
+- Avança progresso
+
+⚠️ Ignorar Cansaço (perigoso!)
+
+- Avança progresso rápido
+- Perde muita sanidade
+- Se ignorar 2x, texto fica com glitch
+
+
+Eventos Aleatórios
+
+Cachorro Latindo
+
+- Ir ver: pode pegar sabotador (+energia) ou só cachorro (+sanidade)
+- Ignorar: arriscado, pode perder progresso
+
+Celular Tocando
+
+- Atender: +sanidade, +energia (gasta 20min)
+- Ignorar: -sanidade
+
+Espelho (quando energia/sanidade baixas)
+
+- Encarar reflexo: -12 sanidade
+- Desviar olhar: -3 sanidade
+- Cobrir espelho: -5 sanidade, -5 energia
+
+
+💤 Sistema de Sono
+
+- Às 24h você dorme automaticamente
+- Recupera energia e sanidade
+- No Dia 2: escolha trabalhar na WEG ou faltar
+
+- Trabalhar: perde energia mas é seguro
+- Faltar: arriscado! Precisa terminar o jogo ou... 
+
+
+
+
+🏆 Finais Possíveis
+
+Normal/Sobrevivência
+
+- Publicou o jogo no prazo
+- Não pediu muita ajuda
+- Não ignorou avisos demais
+
+Recuperação (Melhor!)
+
+- Publicou o jogo
+- Pediu ajuda quando precisou
+- Cuidou da saúde mental
+
+Tóxico
+
+- Publicou o jogo
+- Ignorou 3+ avisos
+- Sacrificou saúde mental
+
+Metamorfose (Pior!)
+
+- NÃO publicou no prazo
+- Faltou na WEG e não compensou
+- Vira uma barata
+
+Colapso
+
+- Energia ou sanidade zerou
+- Não conseguiu terminar
+
+
+⏱️ Quanto Tempo as Tarefas Levam
+
+- Café: 15 min
+- Sprite/Mapa/Personagem: 5-20 min cada
+- Diálogo: 20 min
+- Teste: 30 min
+- Corrigir Bug: 25 min
+- Build: 30 min
+- Publicar: 40 min
 
 
 # Dicas Estratégicas:
