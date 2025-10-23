@@ -90,9 +90,8 @@ ações que tem o render Choice:
 - pausa
 - opções criticas - 
 
----------------------------------------------------------------------------
 
-Guia de Escolhas para Cada Final
+## Guia de Escolhas para Cada Final
 
 Para RECUPERAÇÃO (melhor final):
 - Gerenciar bem energia e sanidade
