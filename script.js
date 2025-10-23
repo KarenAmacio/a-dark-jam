@@ -564,7 +564,7 @@
 
         function checkRandomEvents() {
             // Evento do cachorro
-            if (!state.dogEventShown && state.turnsPlayed >= 3 && Math.random() < 0.12) {
+            if (!state.dogEventShown && state.turnsPlayed >= 3 && Math.random() < 0.15) {
                 state.dogEventShown = true;
                 addStoryLine("", true);
                 addStoryLine("você ouve latidos lá fora.", true);
@@ -623,7 +623,7 @@
                                 
                                 if (checkGameOver()) return;
                                 eventActive = false; 
-                                endTurn(10); 
+                                endTurn(20); 
                                 
                             });
                         } else {
@@ -641,7 +641,7 @@
                                 
                                 if (checkGameOver()) return;
                                 eventActive = false; 
-                                endTurn(5); 
+                                endTurn(20); 
                                 
                             });
                         }
@@ -713,7 +713,7 @@
                             updateTime(20);
                             if (checkGameOver()) return;
                             eventActive = false;
-                            endTurn(20);
+                            endTurn(40);
                             
                         });
                     });
@@ -750,7 +750,7 @@
                             state.sanity -= 12;
                             if (checkGameOver()) return;
                             eventActive = false;
-                            endTurn(5);
+                            endTurn(10);
                             
                         });
                     });
@@ -760,14 +760,13 @@
                         delayedLines([
                             "",
                             "você desvia o olhar.",
-                            "não quer mais ver aquilo.",
-                            "mas sente que algo ficou preso lá dentro.",
+                            "sente como se algo ainda tivesse te observando.",
                             ""
                         ], () => {
                             state.sanity -= 3;
                             if (checkGameOver()) return;
                             eventActive = false;
-                            endTurn(5);
+                            endTurn(10);
                             
                         });
                     });
@@ -785,7 +784,7 @@
                             state.energy -= 5;
                             if (checkGameOver()) return;
                             eventActive = false;
-                            endTurn(5);
+                            endTurn(15);
                             
                         });
                     });
@@ -1037,7 +1036,7 @@
 
 
                 // ==== 🪞 EVENTO DO ESPELHO ====
-                if (!state.mirrorEventShown && state.sanity < 40 && state.energy < 30 && Math.random() < 0.2) {
+                if (!state.mirrorEventShown && state.sanity < 40 && Math.random() < 0.30) {
                     state.mirrorEventShown = true;
                     delayedLines([
                         "",
@@ -1223,7 +1222,7 @@
             ];
 
             const index = state.characterCount % characterBlocks.length;
-            const selectedBlock = characterBlocks[index]; 
+            const selectedBlock = dialogueBlocks[index]; 
 
             delayedLines(["", ...selectedBlock, ""], () => {
                 state.dialogueCount++;
