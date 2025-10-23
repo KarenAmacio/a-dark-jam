@@ -24,6 +24,9 @@
             mirrorEventShown: false,
             ignoredWarningEvent: false,
 
+            showingWegChoice: false,  // Controla se está mostrando a escolha de faltar
+            wegDecisionMade: false,   // Se já tomou a decisão
+
             //fases do jogo
             spriteCount: 0, maxSprites: 5,
             mapCount: 0, maxMaps: 3,
@@ -41,7 +44,7 @@
             lastSaveEventTime: 0,        // Timestamp do último save event
 
             lastWarningEventTime: 0,     // Timestamp do último warning event
-
+            
         };
 
 
@@ -65,6 +68,8 @@
 
             saveEventCooldown: 0,        // Cooldown de 50 segundos para save
             warningEventCooldown: 0,     // Cooldown de 15 segundos para warning
+            
+
             
         }, {
             set(target, key, value) {
@@ -403,32 +408,59 @@
 
         // função para atualizar o display de tempo
         function updateTime(minutes = 15) {
-            state.time += minutes;
-            //verifica se passou da meia-noite - adiciona um dia se for true
-            if (state.time >= 24 * 60) {
-                state.time -= 24 * 60;
-                state.day++;
-
-                forceSleep(); //chama a função de forçar o sono
-                return; //sai da função para evitar atualizar o display duas vezes
-            }
-
-            //atualiza o display de tempo
-            const hours = Math.floor(state.time / 60);
-            const mins = state.time % 60;
-            const timeStr = `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
-            document.getElementById('time-display').textContent = `DIA ${state.day} - ${timeStr}`;
+                state.time += minutes;
+                
+                // ⚠️ DIA 3 COM FALTA: Deadline de meio-dia (12:00 = 720 minutos)
+                if (state.day === 3 && state.wegDecisionMade) {
+                    if (state.time >= 12 * 60) {
+                        // Se não publicou até meio-dia = perdeu
+                        if (state.publishCount === 0) {
+                            delayedLines([
+                                "",
+                                "meio-dia.",
+                                "o tempo acabou.",
+                                "você não conseguiu.",
+                                ""
+                            ], () => {
+                                showEnding('weg_absent_failure');
+                            });
+                            return; // ← Para aqui!
+                        }
+                        // Se publicou, não precisa fazer nada (já ganhou)
+                    }
+                }
+                
+                // Dias normais: meia-noite (24:00 = 1440 minutos)
+                if (state.time >= 24 * 60) {
+                    state.time -= 24 * 60;
+                    state.day++;
+                    forceSleep();
+                    return;
+                }
+                
+                // Atualiza o display
+                const hours = Math.floor(state.time / 60);
+                const mins = state.time % 60;
+                const timeStr = `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+                document.getElementById('time-display').textContent = `DIA ${state.day} - ${timeStr}`;
             }
 
             //função para forçar o sono ao passar da meia-noite
         //função para forçar o sono ao passar da meia-noite
             function forceSleep() {
-                // ⚠️ CHECAGEM CRÍTICA: Se é dia 3 e não publicou = WEG LOYALTY
-                if (state.day >= 3 && state.publishCount === 0) {
+                // ⚠️ DIA 3 (fim do Dia 2): Mostra escolha de faltar ou não
+                if (state.day === 3 && state.publishCount === 0 && !state.wegDecisionMade) {
+                    showWegChoice();
+                    return;
+                }
+                
+                // ⚠️ DIA 4+: Se chegou aqui sem publicar = perdeu
+                if (state.day >= 4 && state.publishCount === 0) {
                     showEnding('weg_loyalty');
                     return;
                 }
                 
+                // ✅ Se chegou aqui, é dia normal OU dia 3 mas já publicou
                 delayedLines([
                     "",
                     "Você não percebe, mas o cansaço vence.",
@@ -439,25 +471,24 @@
                     "Você aperta muito parafuso e volta pra casa. Ta na hora de voltar pro jogo.",
                     ""
                 ], () => {
-                    // ✅ RESETA O CAFÉ E BLOQUEIA SPRITES
+                    // Reseta café
                     state.coffees = 0;
                     state.coffeeLocked = true;
                     state.coffeeBrewTime = 0;
                     
-                    // ✅ RESETA O HORÁRIO PARA 16:00
-                    state.time = 16 * 60; // 16:00 (não 16:45)
+                    // ✅ SEMPRE começa às 16:00 (forceSleep só é chamado nos dias normais)
+                    state.time = 16 * 60;
                     
                     // Recuperação normal
                     state.energy = Math.min(100, state.energy + 50);
                     state.sanity = Math.min(100, state.sanity + 10);
                     cooldowns.drinkCoffeeCooldown = 0;
                     
-                    // ✅ FORÇA ATUALIZAÇÃO DO RELÓGIO
                     updateTime(0);
-                    
                     renderChoices();
                 });
             }
+
 
 
         // Helper simples para garantir que valores fiquem dentro de um intervalo
@@ -816,7 +847,7 @@
                 }
 
             }
-            
+
         //cria o botão de escolha  DANGER
         function createButton(text, onClick, isDanger = false) {
             const button = document.createElement('button');
@@ -864,6 +895,7 @@
 
         function renderChoices() {
             if (eventActive) return; 
+            if (state.showingWegChoice) return;
 
             const choicesDiv = document.getElementById('choices');
             choicesDiv.innerHTML = '';
@@ -1419,6 +1451,77 @@
 
             return false;
         }
+        
+        function showWegChoice() {
+            eventActive = true;
+            state.showingWegChoice = true;
+            
+            const choicesDiv = document.getElementById('choices');
+            choicesDiv.innerHTML = '';
+            
+            delayedLines([
+                "",
+                "O despertador toca.",
+                "4h da manhã.",
+                "",
+                "Você olha para o computador.",
+                "O jogo ainda não está pronto.",
+                "",
+                "Você sente o peso da decisão.",
+                "Ir trabalhar... ou faltar?"
+            ], () => {
+                // Botão 1: Ir trabalhar (submissão)
+                createButton('ir trabalhar', () => {
+                    disableAllButtons();
+                    
+                    delayedLines([
+                        "",
+                        "você levanta.",
+                        "coloca a camisa da empresa.",
+                        "a rotina vence.",
+                        ""
+                    ], () => {
+                        showEnding('weg_loyalty');
+                    });
+                });
+                
+                // Botão 2: Faltar (última chance)
+                createButton('faltar', () => {
+                    disableAllButtons();
+                    
+                    delayedLines([
+                        "",
+                        "você desliga o despertador.",
+                        "ignora as mensagens.",
+                        "isso vai ter consequências.",
+                        "",
+                        "mas hoje, o jogo vem primeiro.",
+                        "",
+                        "você tem até o meio-dia."
+                    ], () => {
+                        state.wegDecisionMade = true;
+                        state.showingWegChoice = false;
+                        eventActive = false;
+                        
+                        // ✅ RESETA PARA DIA 3, 06:00
+                        state.time = 6 * 60;
+                        state.day = 3;
+                        
+                        // Reseta café
+                        state.coffees = 0;
+                        state.coffeeLocked = true;
+                        state.coffeeBrewTime = 0;
+                        
+                        // Penalidade por faltar
+                        state.sanity -= 15;
+                        state.energy = Math.min(100, state.energy + 30); // Menos energia que o normal
+                        
+                        updateTime(0);
+                        renderChoices();
+                    });
+                }, true); // ← true = botão danger (vermelho)
+            });
+        }
 
 
         function showEnding(type) {
@@ -1471,13 +1574,15 @@
                     "",
                     "[ FIM - ENTREGA COM SACRIFÍCIO ]"
                 ],
-                weg_absent_failure: [
+               weg_absent_failure: [
                     "",
                     "você ignora o despertador.",
-                    "mas o tempo não ignora você.",
+                    "o mundo lá fora continua.",
+                    "mas aqui dentro, o tempo escorre como óleo.",
                     "",
-                    "as horas escorrem.",
                     "o jogo não está pronto.",
+                    "você tenta, mas os dedos não respondem.",
+                    "a tela pisca.",
                     "",
                     "você sente algo rastejar.",
                     "por dentro.",
@@ -1489,9 +1594,12 @@
                     "você não é mais você.",
                     "é só um reflexo do que tentou ser.",
                     "",
+                    "um inseto que ainda lembra o que era humano.",
+                    "preso entre teclas e promessas não cumpridas.",
+                    "",
                     "[ FIM - METAMORFOSE INÚTIL ]"
                 ]
-            };
+         };
 
             setTimeout(() => {
                 endings[type].forEach((line, index) => {

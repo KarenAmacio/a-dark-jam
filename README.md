@@ -109,47 +109,27 @@ Espelho (quando energia/sanidade baixas)
 
 
 
-🏆 Finais Possíveis
-
-Normal/Sobrevivência
-
-- Publicou o jogo no prazo
-- Não pediu muita ajuda
-- Não ignorou avisos demais
-
-Recuperação (Melhor!)
-
-- Publicou o jogo
-- Pediu ajuda quando precisou
-- Cuidou da saúde mental
-
-Tóxico
-
-- Publicou o jogo
-- Ignorou 3+ avisos
-- Sacrificou saúde mental
-
-Metamorfose (Pior!)
-
-- NÃO publicou no prazo
-- Faltou na WEG e não compensou
-- Vira uma barata
-
-Colapso
-
-- Energia ou sanidade zerou
-- Não conseguiu terminar
 
 
-⏱️ Quanto Tempo as Tarefas Levam
+ 📊 FLUXO COMPLETO:
+```
+DIA 1 (16:45 → 00:00)
+├─ Trabalha no jogo
+└─ Dorme → DIA 2
 
-- Café: 15 min
-- Sprite/Mapa/Personagem: 5-20 min cada
-- Diálogo: 20 min
-- Teste: 30 min
-- Corrigir Bug: 25 min
-- Build: 30 min
-- Publicar: 40 min
+DIA 2 (16:00 → 00:00)
+├─ Trabalha no jogo
+└─ Se publicou: SUCCESS ✅
+└─ Se não publicou: Dorme → ESCOLHA
+
+ESCOLHA (04:00 do DIA 3)
+├─ IR TRABALHAR → WEG_LOYALTY (game over) ❌
+└─ FALTAR → DIA 3 começa
+
+DIA 3 (06:00 → 12:00) ⏰ DEADLINE
+├─ Trabalha no jogo
+├─ Se publicar antes do meio-dia: WEG_ABSENT_SUCCESS ✅
+└─ Se não publicar até 12:00: WEG_ABSENT_FAILURE ❌
 
 
 # Dicas Estratégicas:
