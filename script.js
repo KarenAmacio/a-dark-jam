@@ -619,7 +619,7 @@
                             ], () => {
                                 // ← Modifica state DENTRO do callback
                                 state.sanity += 10;
-                                state.energy += 10;
+                                state.energy -= 10;
                                 
                                 if (checkGameOver()) return;
                                 eventActive = false; 
@@ -637,7 +637,7 @@
                             ], () => {
                                 // ← Modifica state DENTRO do callback
                                 state.sanity += 15;
-                                state.energy += 5;
+                                state.energy -= 5;
                                 
                                 if (checkGameOver()) return;
                                 eventActive = false; 
@@ -668,7 +668,7 @@
                                 "Você... você salvou?"
                             ], () => {
                                 loadLastSave(); // ← CHAMA A FUNÇÃO DE CARREGAR SAVE
-                                state.sanity -= 20; // Perde mais sanidade por perder progresso
+                                state.sanity -= 25; // Perde mais sanidade por perder progresso
                                 
                                 if (checkGameOver()) return;
                                 eventActive = false;
@@ -708,7 +708,7 @@
                             "você se sente um pouco melhor.",
                             ""
                         ], () => {
-                            state.sanity += 10;
+                            state.sanity += 15;
                             state.energy += 5;
                             updateTime(20);
                             if (checkGameOver()) return;
@@ -727,7 +727,7 @@
                             "silêncio novamente, você se sente sozinho.",
                             ""
                         ], () => {
-                            state.sanity -= 10;
+                            state.sanity -= 15;
                             if (checkGameOver()) return;
                             eventActive = false;
                             endTurn(5);
@@ -763,7 +763,7 @@
                             "sente como se algo ainda tivesse te observando.",
                             ""
                         ], () => {
-                            state.sanity -= 3;
+                            state.sanity -= 10;
                             if (checkGameOver()) return;
                             eventActive = false;
                             endTurn(10);
@@ -780,7 +780,7 @@
                             "mas sente que algo ficou preso lá dentro.",
                             ""
                         ], () => {
-                            state.sanity -= 5;
+                            state.sanity -= 7;
                             state.energy -= 5;
                             if (checkGameOver()) return;
                             eventActive = false;
@@ -1058,7 +1058,7 @@
                     clearTimeout(state._coffeeTimeout);
                     delete state._coffeeTimeout;
                 }
-                endTurn(5);           
+                endTurn(15);           
             });
 
         }
@@ -1135,7 +1135,7 @@
             cooldowns.makeSpriteCooldown = 3;
 
             if (checkGameOver()) return;
-            endTurn(5);
+            endTurn(20);
             renderChoices();
         });
         }
