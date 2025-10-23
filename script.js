@@ -32,11 +32,15 @@
             testCount: 0, maxTests: 4,
             rebugCount: 0, maxRebugs: 3,
             buildCount: 0, maxBuilds: 2,
+            publishCount: 0,
 
             // Sistema de save
             lastSave: null, // guarda o estado do último save
             saveAvailable: false, // controla se o botão de save está visível
             saveTimeout: null, // guarda o timeout do botão de save
+            lastSaveEventTime: 0,        // Timestamp do último save event
+
+            lastWarningEventTime: 0,     // Timestamp do último warning event
 
         };
 
@@ -58,6 +62,9 @@
             takePauseCooldown: 0,
             askForHelpCooldown: 0,
             coffeeBrewTime: 0,
+
+            saveEventCooldown: 0,        // Cooldown de 50 segundos para save
+            warningEventCooldown: 0,     // Cooldown de 15 segundos para warning
             
         }, {
             set(target, key, value) {
@@ -118,11 +125,18 @@
             },
 
             ignoreWarning: {
-                prerequisite: (s) => (s.turnsPlayed || 0) >= 4 && (s.energy || 0) < 35,
+                prerequisite: (s) => {
+                    // Checa cooldown primeiro
+                    if (cooldowns.warningEventCooldown > 0) return false;
+                    
+                    // Depois checa condições normais
+                    return (s.turnsPlayed || 0) >= 4 && (s.energy || 0) < 35;
+                },
                 countKey: null,
                 limitKey: null,
-                cooldownKey: 'ignoreWarningCooldown'
+                cooldownKey: null // Não usa cooldown tradicional
             },
+
 
             // Fases do jogo
             makeSprite: {
@@ -154,28 +168,28 @@
             },
 
             testGame: {
-                prerequisite: (s) => (s.dialogueCount || 0) >= 3,
+                prerequisite: (s) => (s.dialogueCount || 0) >= (s.maxDialogues || 0),
                 countKey: 'testCount',
                 limitKey: 'maxTests',
                 cooldownKey: 'testGameCooldown'
             },
 
             rebugGame: {
-                prerequisite: (s) => (s.testCount || 0) >= 1,
+                prerequisite: (s) => (s.testCount || 0) >= (s.maxTests || 0),
                 countKey: 'rebugCount',
                 limitKey: 'maxRebugs',
                 cooldownKey: 'rebugGameCooldown'
             },
 
             buildGame: {
-                prerequisite: (s) => (s.rebugCount || 0) >= 1 && (s.energy || 0) >= 40 && (s.sanity || 0) >= 50,
+                prerequisite: (s) => (s.rebugCount || 0) >= (s.maxRebugs || 0)  && (s.energy || 0) >= 40 && (s.sanity || 0) >= 50,
                 countKey: 'buildCount',
                 limitKey: 'maxBuilds',
                 cooldownKey: 'buildGameCooldown'
             },
 
             publishGame: {
-                prerequisite: (s) => (s.buildCount || 0) >= 1,
+                prerequisite: (s) => (s.buildCount || 0) >= (s.maxBuilds)  && (s.energy || 0) >= 40 && (s.sanity || 0) >= 50,
                 countKey: null,
                 limitKey: null,
                 cooldownKey: 'publishGameCooldown'
@@ -214,18 +228,20 @@
             // - Não está com save disponível no momento
             // - 15% de chance por turno
             
-            if (state.saveAvailable) return false;
-            
-            const hasProgress = state.spriteCount >= 2 || state.mapCount >= 1 || state.characterCount >= 1;
-            const enoughTurns = state.turnsPlayed >= 10;
-            
-            if (hasProgress && enoughTurns && Math.random() < 0.15) {
-                triggerSaveEvent();
-                return true;
-            }
-            
-            return false;
-        }
+            if (cooldowns.saveEventCooldown > 0) return false;
+                if (state.saveAvailable) return false;
+                
+                const hasProgress = state.spriteCount >= 2 || state.mapCount >= 1 || state.characterCount >= 1;
+                const enoughTurns = state.turnsPlayed >= 10;
+                
+                if (hasProgress && enoughTurns && Math.random() < 0.10) {
+                    triggerSaveEvent();
+                    return true;
+                }
+                
+                return false;
+            }   
+
 
         // Dispara o evento de save
         function triggerSaveEvent() {
@@ -236,24 +252,26 @@
             
             renderChoices();
             
-            // Remove o botão após 3 segundos
+            // Remove o botão após 1.5 segundos
             state.saveTimeout = setTimeout(() => {
                 state.saveAvailable = false;
                 addStoryLine("você esqueceu de salvar.", true);
+                
+                // ✅ ATIVA COOLDOWN DE 50 SEGUNDOS
+                cooldowns.saveEventCooldown = 50;
+                
                 renderChoices();
-            }, 3000);
+            }, 1500);
         }
-        
+
         function quickSave() {
             disableAllButtons();
             
-            // Cancela o timeout se existir
             if (state.saveTimeout) {
                 clearTimeout(state.saveTimeout);
                 state.saveTimeout = null;
             }
             
-            // Salva o estado atual
             state.lastSave = {
                 spriteCount: state.spriteCount,
                 mapCount: state.mapCount,
@@ -279,11 +297,16 @@
                 ""
             ], () => {
                 state.sanity += 5;
+                
+                // ✅ ATIVA COOLDOWN DE 50 SEGUNDOS
+                cooldowns.saveEventCooldown = 50;
+                
                 if (checkGameOver()) return;
                 endTurn(1);
                 renderChoices();
             });
         }
+
 
         function loadLastSave() {
             if (!state.lastSave) {
@@ -370,7 +393,7 @@
                 let delay = 0;
                 lines.forEach((line, i) => {
                     setTimeout(() => addStoryLine(line), delay);
-                    delay += 1500;
+                    delay += 250;
                 });
 
                 if (finalCallback) {
@@ -398,7 +421,14 @@
             }
 
             //função para forçar o sono ao passar da meia-noite
-        function forceSleep() {
+        //função para forçar o sono ao passar da meia-noite
+            function forceSleep() {
+                // ⚠️ CHECAGEM CRÍTICA: Se é dia 3 e não publicou = WEG LOYALTY
+                if (state.day >= 3 && state.publishCount === 0) {
+                    showEnding('weg_loyalty');
+                    return;
+                }
+                
                 delayedLines([
                     "",
                     "Você não percebe, mas o cansaço vence.",
@@ -407,15 +437,28 @@
                     "Você acorda no dia seguinte, é 4h da manhã.",
                     "Levanta cara, você tem que ir pra WEG.",
                     "Você aperta muito parafuso e volta pra casa. Ta na hora de voltar pro jogo.",
-                ]);
+                    ""
+                ], () => {
+                    // ✅ RESETA O CAFÉ E BLOQUEIA SPRITES
+                    state.coffees = 0;
+                    state.coffeeLocked = true;
+                    state.coffeeBrewTime = 0;
+                    
+                    // ✅ RESETA O HORÁRIO PARA 16:00
+                    state.time = 16 * 60; // 16:00 (não 16:45)
+                    
+                    // Recuperação normal
+                    state.energy = Math.min(100, state.energy + 50);
+                    state.sanity = Math.min(100, state.sanity + 10);
+                    cooldowns.drinkCoffeeCooldown = 0;
+                    
+                    // ✅ FORÇA ATUALIZAÇÃO DO RELÓGIO
+                    updateTime(0);
+                    
+                    renderChoices();
+                });
+            }
 
-                state.energy = Math.min(100, state.energy + 50);
-                state.sanity = Math.min(100, state.sanity + 10);
-                cooldowns.drinkCoffeeCooldown = 0;
-                state.coffeeBrewTime = 0;
-
-                renderChoices();
-                }
 
         // Helper simples para garantir que valores fiquem dentro de um intervalo
         function clamp(value, min, max) {
@@ -456,11 +499,11 @@
                 }
             }
             
-            if (hasActiveCooldowns) {
+             if (hasActiveCooldowns) {
                 renderChoices();
                 setTimeout(tick, 1000);
             } else {
-                tickRunning = false; // libera quando acabar
+                tickRunning = false; // ← ADICIONE ISSO AQUI!
                 renderChoices();
             }
         }
@@ -475,22 +518,21 @@
                 if (hasAnyCooldown) {
                     tickRunning = true;
                     setTimeout(tick, 1000);
-                } else {
-                    renderChoices();
                 }
             }
             
             actionInProgress = false;
-
             state.energy = clamp(state.energy, 0, 100);
             state.sanity = clamp(state.sanity, 0, 100);
+            
+            renderChoices(); 
         }
 
         
 
         function checkRandomEvents() {
             // Evento do cachorro
-            if (!state.dogEventShown && state.turnsPlayed >= 3 && Math.random() < 0.15) {
+            if (!state.dogEventShown && state.turnsPlayed >= 3 && Math.random() < 0.12) {
                 state.dogEventShown = true;
                 addStoryLine("", true);
                 addStoryLine("você ouve latidos lá fora.", true);
@@ -500,7 +542,7 @@
             }
             
             // Evento do celular
-            if (!state.phoneEventShown && state.turnsPlayed >= 5 && state.sanity < 60 && Math.random() < 0.25) {
+            if (!state.phoneEventShown && state.turnsPlayed >= 5 && state.sanity < 60 && Math.random() < 0.20) {
                 state.phoneEventShown = true;
                 addStoryLine("", true);
                 addStoryLine("o celular vibra na mesa.", true);
@@ -533,7 +575,7 @@
                     ], () => {
                         // ← Callback executa DEPOIS das linhas acima
                         
-                        if (Math.random() < 0.2) {
+                        if (Math.random() < 0.3) {
                             // Pegou o competidor no flagra
                             delayedLines([
                                 "",
@@ -548,8 +590,9 @@
                                 state.energy += 10;
                                 
                                 if (checkGameOver()) return;
-                                endTurn(10); 
                                 eventActive = false; 
+                                endTurn(10); 
+                                
                             });
                         } else {
                             // Era só o cachorro
@@ -565,8 +608,9 @@
                                 state.energy += 5;
                                 
                                 if (checkGameOver()) return;
-                                endTurn(5); 
                                 eventActive = false; 
+                                endTurn(5); 
+                                
                             });
                         }
                     });
@@ -582,21 +626,24 @@
                         "mas você foca no seu trabalho.",
                         ""
                     ], () => {
-                        if (Math.random() < 0.2) {
+                        if (Math.random() < 0.3) {
                             // Sabotagem acontece - PERDE PROGRESSO
                             delayedLines([
                                 "",
                                 "de repente, a luz pisca.",
                                 "a energia cai. tudo desliga.",
-                                ""
+                                "",
+                                "Você... você salvou?"
                             ], () => {
                                 loadLastSave(); // ← CHAMA A FUNÇÃO DE CARREGAR SAVE
                                 state.sanity -= 20; // Perde mais sanidade por perder progresso
                                 
                                 if (checkGameOver()) return;
-                                endTurn(5);
                                 eventActive = false;
+                                endTurn(5);
+                                
                             });
+
                         } else {
                             // Nada acontece
                             delayedLines([
@@ -606,8 +653,9 @@
                             ], () => {
                                 state.sanity -= 5;
                                 if (checkGameOver()) return;
-                                endTurn(5);
                                 eventActive = false;
+                                endTurn(5);
+                                
                             });
                         }
                     });
@@ -632,8 +680,9 @@
                             state.energy += 5;
                             updateTime(20);
                             if (checkGameOver()) return;
-                            endTurn(20);
                             eventActive = false;
+                            endTurn(20);
+                            
                         });
                     });
 
@@ -648,8 +697,9 @@
                         ], () => {
                             state.sanity -= 10;
                             if (checkGameOver()) return;
-                            endTurn(5);
                             eventActive = false;
+                            endTurn(5);
+                            
                         });
                     });
 
@@ -667,8 +717,9 @@
                         ], () => {
                             state.sanity -= 12;
                             if (checkGameOver()) return;
-                            endTurn(5);
                             eventActive = false;
+                            endTurn(5);
+                            
                         });
                     });
 
@@ -683,8 +734,9 @@
                         ], () => {
                             state.sanity -= 3;
                             if (checkGameOver()) return;
-                            endTurn(5);
                             eventActive = false;
+                            endTurn(5);
+                            
                         });
                     });
 
@@ -700,8 +752,9 @@
                             state.sanity -= 5;
                             state.energy -= 5;
                             if (checkGameOver()) return;
-                            endTurn(5);
                             eventActive = false;
+                            endTurn(5);
+                            
                         });
                     });
                 }
@@ -722,21 +775,23 @@
                             state.progress += 12;
                             state.sanity -= 20;
                             state.energy -= 10;
-                            cooldowns.ignoreWarningCooldown = 10;
-
+                            
+                            // ✅ ATIVA COOLDOWN DE 15 SEGUNDOS
+                            cooldowns.warningEventCooldown = 15;
+                            
                             if (state.ignoredWarnings >= 2) {
                                 const lines = document.querySelectorAll('.story-line');
                                 lines.forEach(line => {
                                     if (Math.random() < 0.5) line.classList.add('glitch');
                                 });
                             }
-
+                            
                             if (checkGameOver()) return;
-                            endTurn(2);
                             eventActive = false;
+                            endTurn(2);
                         });
                     });
-
+                    
                     createButton('pausar por um momento', () => {
                         disableAllButtons();
                         delayedLines([
@@ -747,30 +802,31 @@
                             "mas o código espera.",
                             ""
                         ], () => {
-                        state.energy += 10;
-                        state.sanity += 10;
-                        if (checkGameOver()) return;
-                        endTurn(10);
-                        eventActive = false;
+                            state.energy += 10;
+                            state.sanity += 10;
+                            
+                            // ✅ ATIVA COOLDOWN DE 15 SEGUNDOS
+                            cooldowns.warningEventCooldown = 15;
+                            
+                            if (checkGameOver()) return;
+                            eventActive = false;
+                            endTurn(10);
+                        });
                     });
-                });
-            }
-         eventButtons = false; 
-         renderChoices();
-        }
+                }
 
+            }
+            
         //cria o botão de escolha  DANGER
         function createButton(text, onClick, isDanger = false) {
             const button = document.createElement('button');
             button.textContent = text;
             if (isDanger) button.className = 'danger';
             button.onclick = onClick;
+            button.disabled = false; // ← OK, só eventos usam isso
             document.getElementById('choices').appendChild(button);
-
-            if (eventButtons) {
-                button.disabled = false;
-            }
         }
+
 
         //faz o botão ter barrinha que diminui conforme decremento do cooldown
         function createButtonWithCooldown(text, onClick, cooldownKey) {
@@ -1003,7 +1059,7 @@
                 const boost = Math.floor(state.coffees * 2);
                 state.energy = Math.min(100, state.energy + boost);
                 state.sanity -= 2;
-                cooldowns.drinkCoffeeCooldown = 3;
+                cooldowns.drinkCoffeeCooldown = 5;
                 state.coffeeLocked = false;
                 state.coffees--;
                 
@@ -1045,7 +1101,7 @@
             state.spriteCount++;    
             state.spriteMade = true;
             state.energy -= 10;
-            cooldowns.makeSpriteCooldown = 5;
+            cooldowns.makeSpriteCooldown = 3;
 
             if (checkGameOver()) return;
             endTurn(5);
@@ -1078,7 +1134,7 @@
                 state.mapCount++;
                 state.mapMade = true;
                 state.energy -= 10;
-                cooldowns.makeMapCooldown = 5;
+                cooldowns.makeMapCooldown = 4;
                 
                 if (checkGameOver()) return;
                 endTurn(5);
@@ -1141,7 +1197,7 @@
                 state.dialogueCount++;
                 state.dialogueMade = true;
                 state.energy -= 10;
-                cooldowns.makeDialogueCooldown = 5;
+                cooldowns.makeDialogueCooldown = 4;
 
                 if (checkGameOver()) return;
                 endTurn(20); 
@@ -1176,7 +1232,7 @@
                 state.energy -= 15;
                 state.sanity -= 5;
                 state.testSessions++;
-                cooldowns.testGameCooldown = 2;
+                cooldowns.testGameCooldown = 3;
 
                 if (checkGameOver()) return;
                 endTurn(30);
@@ -1218,7 +1274,7 @@
                 state.rebugCount++;
                 state.energy -= 15;
                 state.sanity -= 15;
-                cooldowns.rebugGameCooldown = 3;
+                cooldowns.rebugGameCooldown = 4;
 
                 if (checkGameOver()) return;
                 endTurn(25);
@@ -1249,7 +1305,7 @@
                 state.buildCount++;
                 state.energy -= 20;
                 state.sanity -= 10;
-                cooldowns.buildGameCooldown = 5;
+                cooldowns.buildGameCooldown = 6;
 
                 if (checkGameOver()) return;
                 endTurn(30);
@@ -1330,10 +1386,10 @@
                 state.sanity += 25;
                 state.progress += 20;
                 state.energy += 10;
-                cooldowns.askForHelpCooldown = 60;
+                cooldowns.askForHelpCooldown = 80;
                 
                 if (checkGameOver()) return;
-                endTurn(20);
+                endTurn(30);
                 renderChoices();
                 
         }); 
@@ -1343,80 +1399,97 @@
 
         // ==== 🎯 CHECAGEM DE FIM DE JOGO ====
         function checkGameOver() {
-            disableAllButtons();
-            if (state.progress >= 100) {
-                if (state.askedForHelp) {
-                    showEnding('recovery');
-                } else if (state.ignoredWarnings >= 3) {
-                    showEnding('toxic');
+            // Verifica se publicou o jogo
+            if (state.publishCount >= 1) {
+                const publishedOnTime = state.day <= 2;
+                
+                if (publishedOnTime) {
+                    showEnding('success');
                 } else {
-                    showEnding('normal');
+                    showEnding('weg_absent_success');
                 }
                 return true;
             }
 
+            // Verifica se perdeu sanidade/energia
             if (state.energy <= 0 || state.sanity <= 0) {
-                showEnding('collapse');
+                showEnding('weg_absent_failure');
                 return true;
             }
 
             return false;
         }
 
+
         function showEnding(type) {
             disableAllButtons();
             const endings = {
-                recovery: [
+                success: [
                     "",
-                    "você desacelera.",
-                    "pede ajuda.",
-                    "aceita que não precisa fazer tudo sozinho.",
+                    "você publica o jogo.",
+                    "ele está longe de perfeito.",
+                    "mas ele existe.",
                     "",
-                    "o jogo fica pronto.",
-                    "você se orgulha dele.",
+                    "você respira fundo.",
+                    "o mundo não desmoronou.",
                     "",
-                    "e mais importante:",
-                    "você ainda está inteiro.",
+                    "e amanhã, tem mais.",
                     "",
-                    "[ FIM - RECUPERAÇÃO ]"
+                    "[ FIM - ENTREGA COM SUCESSO ]"
                 ],
-                toxic: [
+                weg_loyalty: [
                     "",
-                    "você entrega o jogo.",
-                    "ele funciona.",
+                    "o despertador toca.",
+                    "você levanta, como sempre.",
+                    "coloca a camisa da empresa.",
                     "",
-                    "mas quando você fecha o computador,",
-                    "algo está diferente.",
+                    "o jogo não foi publicado.",
+                    "ele fica ali, inacabado.",
                     "",
-                    "você pagou um preço.",
-                    "não tem certeza se valeu.",
+                    "você também.",
                     "",
-                    "[ FIM - ENTREGA TÓXICA ]"
+                    "com o tempo, você se adapta.",
+                    "se molda.",
+                    "se transforma.",
+                    "",
+                    "em algo menor.",
+                    "em algo obediente.",
+                    "",
+                    "[ FIM - SUBMISSÃO CORPORATIVA ]"
                 ],
-                collapse: [
+                weg_absent_success: [
                     "",
-                    "o mundo se fecha.",
+                    "você ignora o despertador.",
+                    "o mundo lá fora continua.",
                     "",
-                    "as bordas escurecem.",
+                    "mas aqui dentro, você termina.",
+                    "o jogo está pronto.",
+                    "você publica.",
                     "",
-                    "o texto embaralha.",
+                    "não foi fácil.",
+                    "mas foi seu.",
                     "",
-                    "você tentou.",
-                    "mas era demais.",
-                    "",
-                    "[ FIM - COLAPSO ]"
+                    "[ FIM - ENTREGA COM SACRIFÍCIO ]"
                 ],
-                normal: [
+                weg_absent_failure: [
                     "",
-                    "você termina o jogo.",
-                    "ele não é perfeito.",
+                    "você ignora o despertador.",
+                    "mas o tempo não ignora você.",
                     "",
-                    "mas está pronto.",
-                    "você sobreviveu.",
+                    "as horas escorrem.",
+                    "o jogo não está pronto.",
                     "",
-                    "a game jam começa amanhã.",
+                    "você sente algo rastejar.",
+                    "por dentro.",
                     "",
-                    "[ FIM - SOBREVIVÊNCIA ]"
+                    "a pele endurece.",
+                    "os olhos se multiplicam.",
+                    "a mente se fragmenta.",
+                    "",
+                    "você não é mais você.",
+                    "é só um reflexo do que tentou ser.",
+                    "",
+                    "[ FIM - METAMORFOSE INÚTIL ]"
                 ]
             };
 
@@ -1425,7 +1498,8 @@
                     setTimeout(() => addStoryLine(line), index * 800);
                 });
                 
-                if (type === 'collapse') {
+                // Efeito especial para o final de metamorfose
+                if (type === 'weg_absent_failure') {
                     setTimeout(() => {
                         document.body.style.opacity = '0';
                     }, endings[type].length * 800 + 2000);
@@ -1434,6 +1508,7 @@
 
             document.getElementById('choices').innerHTML = '';
         }
+
 
         // Inicialização
         function startGame() {
@@ -1444,6 +1519,7 @@
                 "",
                 "faltam dois dias para a game jam."
             ]);
+            updateTime(0); // Força o display inicial do relógio
 
             setTimeout(() => renderChoices(), 2000);
         }
