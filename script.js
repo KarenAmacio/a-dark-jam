@@ -57,6 +57,7 @@
         //flag para evitar múltiplas ações simultâneas
         let actionInProgress = false;
         let eventActive = false;
+        let eventButtons = false;
 
 
         // Desabilita todos os botões para evitar cliques múltiplos
@@ -374,6 +375,7 @@
         function showEventChoice(eventType) {
             eventActive = true;
             actionInProgress = false;
+            eventButtons = true;
 
             //limpa as escolhas atuais
             const choicesDiv = document.getElementById('choices');
@@ -618,6 +620,7 @@
                     });
                 });
             }
+         eventButtons = false; 
         }
 
         //cria o botão de escolha  DANGER
@@ -628,7 +631,7 @@
             button.onclick = onClick;
             document.getElementById('choices').appendChild(button);
 
-            if (eventActive) {
+            if (eventButtons) {
                 button.disabled = false;
             }
         }
