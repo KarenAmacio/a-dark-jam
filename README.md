@@ -19,7 +19,7 @@
 
 # Dicas Estratégicas:
 
-Café dá energia (+boost baseado em quantidade), mas tira sanidade (-2)
-Pausas recuperam energia (+15) e sanidade (+15)
-Pedir ajuda recupera sanidade (+25), progresso (+20) e energia (+10)
-Ignorar avisos dá progresso (+12), mas tira muita sanidade (-20) e energia (-10)
+- Café dá energia (+boost baseado em quantidade), mas tira sanidade (-2)
+- Pausas recuperam energia (+15) e sanidade (+15)
+- Pedir ajuda recupera sanidade (+25), progresso (+20) e energia (+10)
+- Ignorar avisos dá progresso (+12), mas tira muita sanidade (-20) e energia (-10)
