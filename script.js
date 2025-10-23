@@ -33,14 +33,19 @@
             rebugCount: 0, maxRebugs: 3,
             buildCount: 0, maxBuilds: 2,
 
-            // salvamento rápido
-            savedSnapshot: null,
-            savedActive: false,
+            // Sistema de save
+            lastSave: null, // guarda o estado do último save
+            saveAvailable: false, // controla se o botão de save está visível
+            saveTimeout: null, // guarda o timeout do botão de save
+
         };
 
 
-        // Cooldowns globais para ações (em turnos segundos)
-        const cooldowns = {
+        // Guarda os valores máximos automaticamente
+        const maxCooldowns = {};
+
+        // Wrapper pro objeto cooldowns que captura o valor máximo
+        const cooldowns = new Proxy({
             makeCoffeeCooldown: 0,
             drinkCoffeeCooldown: 0,
             makeSpriteCooldown: 0,
@@ -52,7 +57,19 @@
             buildGameCooldown: 0,
             takePauseCooldown: 0,
             askForHelpCooldown: 0,
-        };
+            coffeeBrewTime: 0,
+            
+        }, {
+            set(target, key, value) {
+                // Se tá setando um valor > 0 e não tem max guardado ainda, guarda
+                if (value > 0 && !maxCooldowns[key]) {
+                    maxCooldowns[key] = value;
+                }
+                target[key] = value;
+                return true;
+            }
+        });
+
 
         //flag para evitar múltiplas ações simultâneas
         let actionInProgress = false;
@@ -65,6 +82,7 @@
             actionInProgress = true;
             const buttons = document.querySelectorAll('#choices button');
             buttons.forEach(btn => btn.disabled = true);
+            renderChoices();
         }
 
 
@@ -161,7 +179,15 @@
                 countKey: null,
                 limitKey: null,
                 cooldownKey: 'publishGameCooldown'
+            },
+
+            quickSave: {
+                prerequisite: (s) => s.saveAvailable === true,
+                countKey: null,
+                limitKey: null,
+                cooldownKey: null
             }
+
     };
 
         // Verifica se uma tarefa está disponível com base nas regras definidas
@@ -172,19 +198,131 @@
             // checa prerequisite se existir
             if (rule.prerequisite && !rule.prerequisite(s)) return false;
 
-            // determina a chave do cooldown (usa rule.cooldownKey se fornecido)
-            const cdKey = rule.cooldownKey || `${taskName}Cooldown`;
-            const cdOk = (cooldowns[cdKey] || 0) === 0;
+            // se não há contagem/limite, retorna true (ignora cooldown aqui)
+            if (!rule.countKey) return true;
 
-            // se não há contagem/limite, só retorna com base no cooldown
-            if (!rule.countKey) return cdOk;
-
-            // caso haja contagem/limite, checa isso também
+            // caso haja contagem/limite, checa isso
             const count = s[rule.countKey] || 0;
             const limit = rule.limitKey ? (s[rule.limitKey] || Infinity) : Infinity;
-            return count < limit && cdOk;
-            } 
+            return count < limit;
+        }
+
+        function checkSaveEvent() {
+            // Só aparece se:
+            // - Já fez pelo menos 2 sprites OU 1 mapa OU 1 personagem
+            // - Tem pelo menos 10 turnos jogados
+            // - Não está com save disponível no momento
+            // - 15% de chance por turno
+            
+            if (state.saveAvailable) return false;
+            
+            const hasProgress = state.spriteCount >= 2 || state.mapCount >= 1 || state.characterCount >= 1;
+            const enoughTurns = state.turnsPlayed >= 10;
+            
+            if (hasProgress && enoughTurns && Math.random() < 0.15) {
+                triggerSaveEvent();
+                return true;
+            }
+            
+            return false;
+        }
+
+        // Dispara o evento de save
+        function triggerSaveEvent() {
+            state.saveAvailable = true;
+            
+            addStoryLine("", true);
+            addStoryLine("você se lembra de salvar o projeto.", true);
+            
+            renderChoices();
+            
+            // Remove o botão após 3 segundos
+            state.saveTimeout = setTimeout(() => {
+                state.saveAvailable = false;
+                addStoryLine("você esqueceu de salvar.", true);
+                renderChoices();
+            }, 3000);
+        }
         
+        function quickSave() {
+            disableAllButtons();
+            
+            // Cancela o timeout se existir
+            if (state.saveTimeout) {
+                clearTimeout(state.saveTimeout);
+                state.saveTimeout = null;
+            }
+            
+            // Salva o estado atual
+            state.lastSave = {
+                spriteCount: state.spriteCount,
+                mapCount: state.mapCount,
+                characterCount: state.characterCount,
+                dialogueCount: state.dialogueCount,
+                testCount: state.testCount,
+                rebugCount: state.rebugCount,
+                buildCount: state.buildCount,
+                progress: state.progress,
+                energy: state.energy,
+                sanity: state.sanity,
+                day: state.day,
+                time: state.time
+            };
+            
+            state.saveAvailable = false;
+            
+            delayedLines([
+                "",
+                "você salva o projeto.",
+                "ctrl+s. um hábito.",
+                "você respira aliviado.",
+                ""
+            ], () => {
+                state.sanity += 5;
+                if (checkGameOver()) return;
+                endTurn(1);
+                renderChoices();
+            });
+        }
+
+        function loadLastSave() {
+            if (!state.lastSave) {
+                // Se nunca salvou, perde TUDO
+                addStoryLine("", true);
+                addStoryLine("você nunca salvou o projeto.", true);
+                addStoryLine("tudo se foi.", true);
+                addStoryLine("", true);
+                
+                state.spriteCount = 0;
+                state.mapCount = 0;
+                state.characterCount = 0;
+                state.dialogueCount = 0;
+                state.testCount = 0;
+                state.rebugCount = 0;
+                state.buildCount = 0;
+                state.progress = 0;
+            } else {
+                // Restaura o último save
+                addStoryLine("", true);
+                addStoryLine("você carrega o último save.", true);
+                addStoryLine(`voltou para: sprite ${state.lastSave.spriteCount}/${state.maxSprites}`, true);
+                if (state.lastSave.mapCount > 0) {
+                    addStoryLine(`mapa ${state.lastSave.mapCount}/${state.maxMaps}`, true);
+                }
+                addStoryLine("", true);
+                
+                state.spriteCount = state.lastSave.spriteCount;
+                state.mapCount = state.lastSave.mapCount;
+                state.characterCount = state.lastSave.characterCount;
+                state.dialogueCount = state.lastSave.dialogueCount;
+                state.testCount = state.lastSave.testCount;
+                state.rebugCount = state.lastSave.rebugCount;
+                state.buildCount = state.lastSave.buildCount;
+                state.progress = state.lastSave.progress;
+            }
+        }
+
+
         // Registro simples das linhas mostradas no log de história.
         // Guarda apenas as strings para possíveis usos futuros (debug, replays, savestates).
         const storyLog = [];
@@ -308,11 +446,13 @@
             
             if (state.coffeeBrewTime > 0) {
                 state.coffeeBrewTime--;
+                cooldowns.coffeeBrewTime = state.coffeeBrewTime; // ← sincroniza com cooldowns
                 hasActiveCooldowns = true;
                 
                 if (state.coffeeBrewTime === 0) {
                     state.coffees += 15;
                     addStoryLine("O café está pronto.");
+                    renderChoices();
                 }
             }
             
@@ -433,8 +573,8 @@
                 });
 
                 createButton('ignorar', () => {
-                    disableAllButtons(); // ← ADICIONE ISSO
-
+                    disableAllButtons();
+                    
                     delayedLines([
                         "",
                         "você decide ignorar.",
@@ -442,21 +582,17 @@
                         "mas você foca no seu trabalho.",
                         ""
                     ], () => {
-                        // ← Callback executa DEPOIS das linhas acima
-
                         if (Math.random() < 0.2) {
-                            // Sabotagem acontece
+                            // Sabotagem acontece - PERDE PROGRESSO
                             delayedLines([
                                 "",
                                 "de repente, a luz pisca.",
                                 "a energia cai. tudo desliga.",
-                                "você perdeu parte do progresso.",
                                 ""
                             ], () => {
-                                // ← Modifica state DENTRO do callback
-                                state.progress = Math.max(0, state.progress - 20);
-                                state.sanity -= 15;
-
+                                loadLastSave(); // ← CHAMA A FUNÇÃO DE CARREGAR SAVE
+                                state.sanity -= 20; // Perde mais sanidade por perder progresso
+                                
                                 if (checkGameOver()) return;
                                 endTurn(5);
                                 eventActive = false;
@@ -468,9 +604,7 @@
                                 "nada acontece. só silêncio.",
                                 ""
                             ], () => {
-                                // ← Modifica state DENTRO do callback
                                 state.sanity -= 5;
-
                                 if (checkGameOver()) return;
                                 endTurn(5);
                                 eventActive = false;
@@ -478,6 +612,7 @@
                         }
                     });
                 });
+
 
                 // === EVENTO CELULAR ===
 
@@ -621,6 +756,7 @@
                 });
             }
          eventButtons = false; 
+         renderChoices();
         }
 
         //cria o botão de escolha  DANGER
@@ -636,6 +772,39 @@
             }
         }
 
+        //faz o botão ter barrinha que diminui conforme decremento do cooldown
+        function createButtonWithCooldown(text, onClick, cooldownKey) {
+            const currentCd = cooldowns[cooldownKey] || 0;
+            const maxCd = maxCooldowns[cooldownKey] || 0;
+            
+            const wrapper = document.createElement('div');
+            wrapper.className = 'button-wrapper';
+            
+            const btn = document.createElement('button');
+            btn.textContent = text;
+            btn.disabled = currentCd > 0;
+            btn.onclick = currentCd === 0 ? onClick : null;
+            
+            wrapper.appendChild(btn);
+            
+            // Se tiver cooldown ativo, mostra a barra
+            if (currentCd > 0 && maxCd > 0) {
+                const progress = ((maxCd - currentCd) / maxCd) * 100;
+                
+                const bar = document.createElement('div');
+                bar.className = 'cooldown-bar';
+                
+                const progressBar = document.createElement('div');
+                progressBar.className = 'cooldown-progress';
+                progressBar.style.width = `${progress}%`;
+                
+                bar.appendChild(progressBar);
+                wrapper.appendChild(bar);
+            }
+            
+            document.getElementById('choices').appendChild(wrapper);
+}
+
 
         function renderChoices() {
             if (eventActive) return; 
@@ -644,125 +813,124 @@
             choicesDiv.innerHTML = '';
 
             if (checkRandomEvents()) return;
+            if (checkSaveEvent()) return;
             if (actionInProgress) return;
 
             // === Ações utilitárias ====
 
+            // botao de save
+            if (isTaskAvailable('quickSave')) {
+                createButton('💾 SALVAR AGORA', quickSave, true); // true = botão danger/destaque
+            }
             // Fazer mais café
             if (isTaskAvailable('makeCoffee')) {
-                const btn = document.createElement('button');
-                btn.textContent = (cooldowns.makeCoffeeCooldown || 0) > 0 ? `fazer café` : 'fazer café';
-                btn.disabled = (cooldowns.makeCoffeeCooldown || 0) > 0;
-                if ((cooldowns.makeCoffeeCooldown || 0) === 0) btn.onclick = makeCoffee;
-                choicesDiv.appendChild(btn);
-                }
+                createButtonWithCooldown('fazer café', makeCoffee, 'makeCoffeeCooldown');
+            }
 
-            // Café sendo preparado (caso especial — mantém a exibição específica)
+            // Café sendo preparado (caso especial)
+            console.log('coffeeBrewTime:', state.coffeeBrewTime);
             if ((state.coffeeBrewTime || 0) > 0) {
-                const btn = document.createElement('button');
-                btn.textContent = `preparando café...`;
-                btn.disabled = true;
-                choicesDiv.appendChild(btn);
-                }
+                createButtonWithCooldown(
+                    `preparando café...`, // ← ERA ISSO, NÃO SPRITE!
+                    null, // ← Sem onClick porque tá disabled
+                    'coffeeBrewTime' // ← Usa o coffeeBrewTime como cooldown
+                );
+            }
 
             // Café pronto para tomar
             if (isTaskAvailable('drinkCoffee')) {
-                const btn = document.createElement('button');
-                btn.textContent = (cooldowns.drinkCoffeeCooldown || 0) > 0 ? `tomar café` : 'tomar café';
-                btn.disabled = (cooldowns.drinkCoffeeCooldown || 0) > 0;
-                if ((cooldowns.drinkCoffeeCooldown || 0) === 0) btn.onclick = drinkCoffee;
-                choicesDiv.appendChild(btn);
-                }
+                createButtonWithCooldown('tomar café', drinkCoffee, 'drinkCoffeeCooldown');
+            }
 
             // Pausa
             if (isTaskAvailable('takePause')) {
-                const btn = document.createElement('button');
-                btn.textContent = (cooldowns.takePauseCooldown || 0) > 0 ? `fazer uma pausa` : 'fazer uma pausa';
-                btn.disabled = (cooldowns.takePauseCooldown || 0) > 0;
-                if ((cooldowns.takePauseCooldown || 0) === 0 && isTaskAvailable('takePause')) btn.onclick = takePause;
-                choicesDiv.appendChild(btn);
-                }
+                createButtonWithCooldown('fazer uma pausa', takePause, 'takePauseCooldown');
+            }
 
             // Pedir ajuda
             if (isTaskAvailable('askForHelp')) {
-                const btn = document.createElement('button');
-                btn.textContent = (cooldowns.askForHelpCooldown || 0) > 0 ? `pedir ajuda` : 'pedir ajuda';
-                btn.disabled = (cooldowns.askForHelpCooldown || 0) > 0;
-                if ((cooldowns.askForHelpCooldown || 0) === 0 && isTaskAvailable('askForHelp')) {
-                    btn.onclick = () => { askForHelp(); state.lastHelpDay = state.day; };
-                }
-                choicesDiv.appendChild(btn);
-                }
+                createButtonWithCooldown(
+                    'pedir ajuda', 
+                    () => { askForHelp(); state.lastHelpDay = state.day; }, // ← Precisa do wrapper
+                    'askForHelpCooldown'
+                );
+            }
 
             // Aviso de cansaço    
             if (isTaskAvailable('ignoreWarning')) {
-                    state.ignoredWarningEvent = true;
-                    addStoryLine("", true);
-                    addStoryLine("Você se sente muito cansado, seu corpo pede uma pausa.", true);
-                    addStoryLine("", true);
-                    showEventChoice('ignoreWarning');
-                    return true;
-                }
-
+                state.ignoredWarningEvent = true;
+                addStoryLine("", true);
+                addStoryLine("Você se sente muito cansado, seu corpo pede uma pausa.", true);
+                addStoryLine("", true);
+                showEventChoice('ignoreWarning');
+                return; // ← NÃO PRECISA DO 'true', só return
+            }
 
             // ==== 🎯 FASES DO JOGO ====
             if (isTaskAvailable('makeSprite')) {
-                const btn = document.createElement('button');
-                btn.textContent = cooldowns.makeSpriteCooldown > 0 ? `fazer sprite` : 'fazer sprite';
-                btn.disabled = cooldowns.makeSpriteCooldown > 0;
-                if (cooldowns.makeSpriteCooldown === 0) btn.onclick = makeSprite;
-                choicesDiv.appendChild(btn);
+                createButtonWithCooldown(
+                    `fazer sprite (${state.spriteCount}/${state.maxSprites})`, 
+                    makeSprite, 
+                    'makeSpriteCooldown'
+                );
             }
 
             if (isTaskAvailable('makeMap')) {
-                const btn = document.createElement('button');
-                btn.textContent = cooldowns.makeMapCooldown > 0 ? `fazer mapa` : 'fazer mapa';
-                btn.disabled = cooldowns.makeMapCooldown > 0;
-                if (cooldowns.makeMapCooldown === 0) btn.onclick = makeMap;
-                choicesDiv.appendChild(btn);
+                createButtonWithCooldown(
+                    `fazer mapa (${state.mapCount}/${state.maxMaps})`, 
+                    makeMap, 
+                    'makeMapCooldown'
+                );
             }
 
             if (isTaskAvailable('makeCharacter')) {
-                const btn = document.createElement('button');
-                btn.textContent = cooldowns.makeCharacterCooldown > 0 ? `fazer personagem` : 'fazer personagem';
-                btn.disabled = cooldowns.makeCharacterCooldown > 0;
-                if (cooldowns.makeCharacterCooldown === 0) btn.onclick = makeCharacter;
-                choicesDiv.appendChild(btn);
+                createButtonWithCooldown(
+                    `fazer personagem (${state.characterCount}/${state.maxCharacters})`, 
+                    makeCharacter, 
+                    'makeCharacterCooldown'
+                );
             }
 
             if (isTaskAvailable('makeDialogue')) {
-                const btn = document.createElement('button');
-                btn.textContent = cooldowns.makeDialogueCooldown > 0 ? `fazer diálogo` : 'fazer diálogo';
-                btn.disabled = cooldowns.makeDialogueCooldown > 0;
-                if (cooldowns.makeDialogueCooldown === 0) btn.onclick = makeDialogue;
-                choicesDiv.appendChild(btn);
+                createButtonWithCooldown(
+                    `fazer diálogo (${state.dialogueCount}/${state.maxDialogues})`, 
+                    makeDialogue, 
+                    'makeDialogueCooldown'
+                );
             }
 
             if (isTaskAvailable('testGame')) {
-                const btn = document.createElement('button');
-                btn.textContent = cooldowns.testGameCooldown > 0 ? `fazer teste` : 'fazer teste';
-                btn.disabled = cooldowns.testGameCooldown > 0;
-                if (cooldowns.testGameCooldown === 0) btn.onclick = testGame;
-                choicesDiv.appendChild(btn);
+                createButtonWithCooldown(
+                    `fazer teste (${state.testCount}/${state.maxTests})`, 
+                    testGame, 
+                    'testGameCooldown'
+                );
+            }
+
+            if (isTaskAvailable('rebugGame')) { // ← FALTOU ESSE!
+                createButtonWithCooldown(
+                    `debugar (${state.rebugCount}/${state.maxRebugs})`, 
+                    rebugGame, 
+                    'rebugGameCooldown'
+                );
             }
 
             if (isTaskAvailable('buildGame')) {
-                const btn = document.createElement('button');
-                btn.textContent = cooldowns.buildGameCooldown > 0 ? `fazer build` : 'fazer build';
-                btn.disabled = cooldowns.buildGameCooldown > 0;
-                if (cooldowns.buildGameCooldown === 0) btn.onclick = buildGame;
-                choicesDiv.appendChild(btn);
+                createButtonWithCooldown(
+                    `fazer build (${state.buildCount}/${state.maxBuilds})`, 
+                    buildGame, 
+                    'buildGameCooldown'
+                );
             }
 
             if (isTaskAvailable('publishGame')) {
-                const btn = document.createElement('button');
-                btn.textContent = cooldowns.publishGameCooldown > 0 ? `fazer publish` : 'fazer publicação';
-                btn.disabled = cooldowns.publishGameCooldown > 0;
-                if (cooldowns.publishGameCooldown === 0) btn.onclick = publishGame;
-                choicesDiv.appendChild(btn);
+                createButtonWithCooldown(
+                    `publicar jogo`, 
+                    publishGame, 
+                    'publishGameCooldown'
+                );
             }
-
-        }   
+        }
 
 //==== 🎯 AÇÕES DISPONÍVEIS ====
 
@@ -777,8 +945,9 @@
                 "caminha até a cozinha.",
                 "água na máquina. pó no filtro.",
                 "o café começa a gotejar.",
-                ""
             ], () => {
+
+
                 // ==== 🪞 EVENTO DO ESPELHO ====
                 if (!state.mirrorEventShown && state.sanity < 40 && state.energy < 30 && Math.random() < 0.2) {
                     state.mirrorEventShown = true;
@@ -792,32 +961,19 @@
                     return;
                 }
 
-                // ==== ⏳ INICIA PREPARO DO CAFÉ ====
+                 // ==== ⏳ INICIA PREPARO DO CAFÉ ====
                 state.coffeeBrewTime = 5;    // tempo real em segundos
+                cooldowns.coffeeBrewTime = state.coffeeBrewTime; // ← sincroniza com cooldowns
                 state.coffeeLocked = true;
 
-
-                // Libera os botões AGORA (o café vai preparar em background)
-                
-                    renderChoices(); // Mostra "preparando café..."
-
-                    // limpa timeout anterior se existir
-                    if (state._coffeeTimeout) {
-                        clearTimeout(state._coffeeTimeout);
-                        delete state._coffeeTimeout;
-                    }
-
-                    // Café ficará pronto automaticamente após o tempo
-                    setTimeout(() => {
-                        state.coffeeBrewTime = 0;
-                        state.coffees += 15;
-                        addStoryLine("o café está pronto.");
-
-                        if (checkGameOver()) return;
-                        endTurn(15);
-                        renderChoices();
-                    }, 5000); // 5 segundos reais
+                // limpa timeout anterior se existir
+                if (state._coffeeTimeout) {
+                    clearTimeout(state._coffeeTimeout);
+                    delete state._coffeeTimeout;
+                }
+                endTurn(5);           
             });
+
         }
 
 
