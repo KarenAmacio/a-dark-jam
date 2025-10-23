@@ -88,7 +88,7 @@ ações que tem o render Choice:
 - trabalhar - sempre disponivel, mas com cooldown
 - fazer sprite
 - pausa
-- opções criticas - 
+- opções criticas
 
 
 ## Guia de Escolhas para Cada Final
