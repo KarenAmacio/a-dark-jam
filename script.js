@@ -56,6 +56,8 @@
 
         //flag para evitar múltiplas ações simultâneas
         let actionInProgress = false;
+        let eventActive = false;
+
 
         // Desabilita todos os botões para evitar cliques múltiplos
         function disableAllButtons() {
@@ -250,7 +252,7 @@
             }
 
             //atualiza o display de tempo
-             const hours = Math.floor(state.time / 60);
+            const hours = Math.floor(state.time / 60);
             const mins = state.time % 60;
             const timeStr = `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
             document.getElementById('time-display').textContent = `DIA ${state.day} - ${timeStr}`;
@@ -332,6 +334,8 @@
                 if (hasAnyCooldown) {
                     tickRunning = true;
                     setTimeout(tick, 1000);
+                } else {
+                    renderChoices();
                 }
             }
             
@@ -368,6 +372,9 @@
         }
 
         function showEventChoice(eventType) {
+            eventActive = true;
+            actionInProgress = false;
+
             //limpa as escolhas atuais
             const choicesDiv = document.getElementById('choices');
             choicesDiv.innerHTML = '';
@@ -400,7 +407,7 @@
                                 
                                 if (checkGameOver()) return;
                                 endTurn(10); 
-                                renderChoices();
+                                eventActive = false; 
                             });
                         } else {
                             // Era só o cachorro
@@ -417,7 +424,7 @@
                                 
                                 if (checkGameOver()) return;
                                 endTurn(5); 
-                                renderChoices();
+                                eventActive = false; 
                             });
                         }
                     });
@@ -450,7 +457,7 @@
 
                                 if (checkGameOver()) return;
                                 endTurn(5);
-                                renderChoices();
+                                eventActive = false;
                             });
                         } else {
                             // Nada acontece
@@ -464,7 +471,7 @@
 
                                 if (checkGameOver()) return;
                                 endTurn(5);
-                                renderChoices();
+                                eventActive = false;
                             });
                         }
                     });
@@ -489,7 +496,7 @@
                             updateTime(20);
                             if (checkGameOver()) return;
                             endTurn(20);
-                            renderChoices();
+                            eventActive = false;
                         });
                     });
 
@@ -505,7 +512,7 @@
                             state.sanity -= 10;
                             if (checkGameOver()) return;
                             endTurn(5);
-                            renderChoices();
+                            eventActive = false;
                         });
                     });
 
@@ -524,7 +531,7 @@
                             state.sanity -= 12;
                             if (checkGameOver()) return;
                             endTurn(5);
-                            renderChoices();
+                            eventActive = false;
                         });
                     });
 
@@ -540,7 +547,7 @@
                             state.sanity -= 3;
                             if (checkGameOver()) return;
                             endTurn(5);
-                            renderChoices();
+                            eventActive = false;
                         });
                     });
 
@@ -557,7 +564,7 @@
                             state.energy -= 5;
                             if (checkGameOver()) return;
                             endTurn(5);
-                            renderChoices();
+                            eventActive = false;
                         });
                     });
                 }
@@ -589,7 +596,7 @@
 
                             if (checkGameOver()) return;
                             endTurn(2);
-                            renderChoices();
+                            eventActive = false;
                         });
                     });
 
@@ -607,7 +614,7 @@
                         state.sanity += 10;
                         if (checkGameOver()) return;
                         endTurn(10);
-                        renderChoices();
+                        eventActive = false;
                     });
                 });
             }
@@ -620,10 +627,16 @@
             if (isDanger) button.className = 'danger';
             button.onclick = onClick;
             document.getElementById('choices').appendChild(button);
+
+            if (eventActive) {
+                button.disabled = false;
+            }
         }
 
 
         function renderChoices() {
+            if (eventActive) return; 
+
             const choicesDiv = document.getElementById('choices');
             choicesDiv.innerHTML = '';
 
