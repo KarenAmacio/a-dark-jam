@@ -736,3 +736,276 @@ button.danger:hover:not(:disabled) {
         --glow-intense: rgba(0, 255, 0, 0.7);
     }
 }
+
+/* === MENU PRINCIPAL === */
+#main-menu {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10000;
+    background: var(--void-black);
+}
+
+.menu-content {
+    text-align: center;
+    max-width: 600px;
+    padding: 40px;
+    animation: menu-fade-in 1.5s ease-out;
+}
+
+@keyframes menu-fade-in {
+    0% { opacity: 0; transform: translateY(20px); }
+    100% { opacity: 1; transform: translateY(0); }
+}
+
+.game-title {
+    font-family: 'Press Start 2P', 'VT323', monospace;
+    font-size: 48px;
+    color: var(--phosphor-green);
+    margin-bottom: 20px;
+    text-shadow: 
+        0 0 20px var(--glow-intense),
+        0 0 40px var(--glow-medium),
+        0 0 60px var(--glow-soft);
+    animation: title-pulse 2s ease-in-out infinite;
+}
+
+@keyframes title-pulse {
+    0%, 100% { 
+        text-shadow: 
+            0 0 20px var(--glow-intense),
+            0 0 40px var(--glow-medium),
+            0 0 60px var(--glow-soft);
+    }
+    50% { 
+        text-shadow: 
+            0 0 30px var(--glow-intense),
+            0 0 50px var(--glow-medium),
+            0 0 70px var(--glow-soft);
+    }
+}
+
+.glitch-text {
+    position: relative;
+    display: inline-block;
+}
+
+.glitch-text::before,
+.glitch-text::after {
+    content: attr(data-text);
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.glitch-text::before {
+    animation: glitch-1 2.5s infinite;
+    color: var(--cyan-aged);
+    z-index: -1;
+}
+
+.glitch-text::after {
+    animation: glitch-2 2.5s infinite;
+    color: var(--text-danger);
+    z-index: -2;
+}
+
+@keyframes glitch-1 {
+    0%, 100% { transform: translate(0); opacity: 0; }
+    2% { transform: translate(-2px, 2px); opacity: 0.7; }
+    4% { transform: translate(0); opacity: 0; }
+}
+
+@keyframes glitch-2 {
+    0%, 100% { transform: translate(0); opacity: 0; }
+    2.5% { transform: translate(2px, -2px); opacity: 0.7; }
+    4.5% { transform: translate(0); opacity: 0; }
+}
+
+.game-subtitle {
+    font-size: 16px;
+    color: var(--text-dim);
+    margin-bottom: 50px;
+    letter-spacing: 2px;
+    text-shadow: 0 0 10px var(--glow-soft);
+}
+
+.menu-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-bottom: 40px;
+}
+
+.menu-button {
+    background: transparent;
+    color: var(--text-bright);
+    border: 3px solid var(--phosphor-dark);
+    border-left-width: 5px;
+    padding: 15px 30px;
+    font-family: 'VT323', monospace;
+    font-size: 24px;
+    letter-spacing: 2px;
+    cursor: pointer;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    
+    text-shadow: 
+        0 0 5px var(--glow-medium),
+        0 0 10px var(--glow-soft);
+    
+    box-shadow: 
+        inset 0 2px 6px var(--shadow-deep),
+        inset 0 0 18px rgba(0, 0, 0, 0.4);
+}
+
+.menu-button:hover {
+    background: rgba(51, 255, 136, 0.1);
+    border-color: var(--phosphor-dim);
+    transform: translateX(10px);
+    
+    box-shadow: 
+        inset 0 2px 6px var(--shadow-deep),
+        inset 0 0 25px rgba(51, 255, 136, 0.08),
+        0 0 25px var(--glow-medium),
+        0 0 40px var(--glow-soft);
+    
+    text-shadow: 
+        0 0 10px var(--glow-intense),
+        0 0 20px var(--glow-medium);
+}
+
+.menu-button:active {
+    transform: translateX(10px) translateY(2px);
+}
+
+.menu-footer {
+    font-size: 14px;
+    color: var(--text-ghost);
+    opacity: 0;
+    animation: footer-blink 2s ease-in-out 1s infinite;
+}
+
+@keyframes footer-blink {
+    0%, 49%, 100% { opacity: 0; }
+    50%, 99% { opacity: 0.5; }
+}
+
+/* === TELA DE INSTRUÇÕES === */
+#instructions-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10000;
+    background: var(--void-black);
+    overflow-y: auto;
+    padding: 20px;
+}
+
+.instructions-content {
+    max-width: 700px;
+    padding: 30px;
+    background: var(--terminal-dark);
+    border: 4px solid var(--phosphor-dark);
+    box-shadow: 
+        0 0 50px var(--glow-medium),
+        inset 0 0 90px var(--shadow-deep);
+    animation: menu-fade-in 0.5s ease-out;
+}
+
+.instructions-content h2 {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 28px;
+    color: var(--phosphor-green);
+    text-align: center;
+    margin-bottom: 30px;
+    letter-spacing: 3px;
+    text-shadow: 
+        0 0 15px var(--glow-intense),
+        0 0 30px var(--glow-medium);
+}
+
+.instruction-block {
+    margin-bottom: 25px;
+    padding: 15px;
+    background: rgba(51, 255, 136, 0.03);
+    border-left: 3px solid var(--phosphor-dim);
+}
+
+.instruction-block p {
+    margin: 8px 0;
+    line-height: 1.6;
+    font-size: 16px;
+}
+
+.instruction-block strong {
+    color: var(--phosphor-dim);
+    text-shadow: 0 0 8px var(--glow-medium);
+}
+
+/* === RESPONSIVIDADE MENU === */
+@media (max-width: 768px) {
+    .game-title {
+        font-size: 32px;
+    }
+    
+    .menu-button {
+        font-size: 20px;
+        padding: 12px 24px;
+    }
+    
+    .instructions-content {
+        padding: 20px;
+    }
+    
+    .instructions-content h2 {
+        font-size: 22px;
+    }
+}
+
+@media (max-width: 480px) {
+    .game-title {
+        font-size: 24px;
+    }
+    
+    .game-subtitle {
+        font-size: 14px;
+    }
+    
+    .menu-button {
+        font-size: 18px;
+    }
+}
+
+/* === ACESSIBILIDADE === */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+    body::before, body::after { animation: none; }
+}
+
+/* === ALTO CONTRASTE === */
+@media (prefers-contrast: high) {
+    :root {
+        --phosphor-green: #00ff00;
+        --text-bright: #00ff00;
+        --glow-intense: rgba(0, 255, 0, 0.7);
+    }
+}

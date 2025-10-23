@@ -30,8 +30,8 @@
             //fases do jogo
             spriteCount: 0, maxSprites: 5,
             mapCount: 0, maxMaps: 3,
-            characterCount: 0, maxCharacters: 4,
-            dialogueCount: 0, maxDialogues: 6,
+            characterCount: 0, maxCharacters: 5,
+            dialogueCount: 0, maxDialogues: 5,
             testCount: 0, maxTests: 4,
             rebugCount: 0, maxRebugs: 3,
             buildCount: 0, buildPassed: false, maxBuilds: 1,
@@ -525,7 +525,7 @@
                 hasActiveCooldowns = true;
                 
                 if (state.coffeeBrewTime === 0) {
-                    state.coffees += 15;
+                    state.coffees += 5;
                     addStoryLine("O café está pronto.");
                     renderChoices();
                 }
@@ -1189,9 +1189,11 @@
                 ["vamos colocar um cara que ainda coda em Java hoje em dia.", "ele tem cara de quem defende isso com orgulho.", "esse vai ser o Leonardo."],
                 ["tem um cara estranho que vem perguntar pro player se quer ir pra robótica.", "ele pode ser tipo o jumpscare.", "Manfred, um bom nome."],
             ];
-            // 🎲 Sorteia um bloco aleatório
-            const index = Math.floor(Math.random() * characterBlocks.length);
-            const selectedBlock = characterBlocks[index];
+            
+
+            const index = state.characterCount % characterBlocks.length;
+            const selectedBlock = characterBlocks[index]; 
+
             delayedLines(["", ...selectedBlock, ""], () => {    
                 state.characterCount++;
                 state.characterMade = true;
@@ -1217,14 +1219,12 @@
                 ["Juninho mostra um pôster de anime.", "você não reconhece.", "ele te chama de normie."],
                 ["Andrei instala Arch Linux no seu inventário.", "você não pediu isso.", "ele diz que é pela performance."],
                 ["Leonardo fala sobre Java.", "ninguém pediu.", "ele continua mesmo assim."],
-                ["Manfred aparece do nada.", "pergunta se você quer ir pra robótica.", "você diz não, ele diz que vai buscar os troféus."],
-                ["um personagem sem nome te observa.", "ele não fala nada.", "você sente que foi julgado."],
-                ["alguém te pergunta se você prefere sprites ou mapas.", "você responde mapas.", "ele te bloqueia."]
+                ["Manfred aparece do nada.", "pergunta se você quer ir pra robótica.", "você diz não, ele diz que vai buscar os troféus."],    
             ];
 
-            // 🎲 Sorteia um bloco aleatório
-            const index = Math.floor(Math.random() * dialogueBlocks.length);
-            const selectedBlock = dialogueBlocks[index];    
+            const index = state.characterCount % characterBlocks.length;
+            const selectedBlock = characterBlocks[index]; 
+
             delayedLines(["", ...selectedBlock, ""], () => {
                 state.dialogueCount++;
                 state.dialogueMade = true;
@@ -1264,6 +1264,7 @@
                 state.energy -= 15;
                 state.sanity -= 5;
                 state.testSessions++;
+                state.testCount++;
                 cooldowns.testGameCooldown = 3;
 
                 if (checkGameOver()) return;
@@ -1643,6 +1644,10 @@
 
         // Inicialização
         function startGame() {
+            // Esconde o menu e mostra o jogo
+            document.getElementById('main-menu').style.display = 'none';
+            document.getElementById('game-container').style.display = 'block';
+            
             delayedLines([
                 "você está no quarto.",
                 "sentado no computador.",
@@ -1655,4 +1660,20 @@
             setTimeout(() => renderChoices(), 2000);
         }
 
-        startGame();
+        // Controle do Menu
+        document.getElementById('start-game').addEventListener('click', () => {
+            startGame();
+        });
+
+        document.getElementById('show-instructions').addEventListener('click', () => {
+            document.getElementById('main-menu').style.display = 'none';
+            document.getElementById('instructions-screen').style.display = 'flex';
+        });
+
+        document.getElementById('back-to-menu').addEventListener('click', () => {
+            document.getElementById('instructions-screen').style.display = 'none';
+            document.getElementById('main-menu').style.display = 'flex';
+        });
+
+        // Não inicia o jogo automaticamente mais
+        // startGame(); ← REMOVIDO

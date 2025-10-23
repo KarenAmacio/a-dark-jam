@@ -8,7 +8,60 @@
   
 </head>
 <body>
-    <div id="game-container">
+    <!-- MENU INICIAL -->
+    <div id="main-menu">
+        <div class="menu-content">
+            <h1 class="game-title">
+                <span class="glitch-text" data-text="A DARK JAM">A DARK JAM</span>
+            </h1>
+            <p class="game-subtitle">um pouco do que foi a game jam</p>
+            
+            <div class="menu-buttons">
+                <button id="start-game" class="menu-button">► COMEÇAR</button>
+                <button id="show-instructions" class="menu-button">? INSTRUÇÕES</button>
+            </div>
+            
+            <div class="menu-footer">
+                <p>pressione qualquer botão para continuar</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- TELA DE INSTRUÇÕES -->
+    <div id="instructions-screen" style="display: none;">
+        <div class="instructions-content">
+            <h2>COMO JOGAR</h2>
+            <div class="instruction-block">
+                <p><strong>OBJETIVO:</strong></p>
+                <p>Complete seu jogo em 2 dias antes da deadline da game jam.</p>
+                <p>Se não conseguir, você pode tentar faltar no trabalho no dia 3...</p>
+            </div>
+            
+            <div class="instruction-block">
+                <p><strong>ATRIBUTOS:</strong></p>
+                <p>• ENERGIA: Necessária para trabalhar. Recupera ao dormir e com café.</p>
+                <p>• SANIDADE: Sua saúde mental. Cuidado ao ignorar avisos.</p>
+            </div>
+            
+            <div class="instruction-block">
+                <p><strong>FASES DO JOGO:</strong></p>
+                <p>Sprites → Mapas → Personagens → Diálogos → Testes → Debug → Build → Publicar</p>
+            </div>
+            
+            <div class="instruction-block">
+                <p><strong>DICAS:</strong></p>
+                <p>• Salve quando possível (💾 SALVAR AGORA)</p>
+                <p>• Gercie café e pausas com sabedoria</p>
+                <p>• Eventos aleatórios podem ajudar ou atrapalhar</p>
+                <p>• Fique atento aos avisos do seu corpo</p>
+            </div>
+            
+            <button id="back-to-menu" class="menu-button">← VOLTAR</button>
+        </div>
+    </div>
+
+    <!-- JOGO PRINCIPAL -->
+    <div id="game-container" style="display: none;">
         <div id="time-display"></div>
         <div id="story-log"></div>
         <div id="choices"></div>
