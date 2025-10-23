@@ -90,6 +90,35 @@ ações que tem o render Choice:
 - pausa
 - opções criticas - 
 
+---------------------------------------------------------------------------
 
+Guia de Escolhas para Cada Final
 
+Para RECUPERAÇÃO (melhor final):
+- Gerenciar bem energia e sanidade
+- IMPORTANTE: Quando energia < 35, escolher "pedir ajuda"
+- Completar todas as fases do jogo
+- Não deixar energia/sanidade chegar a 0
 
+Para ENTREGA TÓXICA:
+- Quando aparecer "Você se sente muito cansado", escolher "ignorar e continuar" 3+ vezes
+- NUNCA escolher "pedir ajuda"
+- Gerenciar minimamente energia para não morrer
+- Completar o jogo
+
+Para SOBREVIVÊNCIA:
+- NUNCA escolher "pedir ajuda"
+- Ignorar avisos menos de 3 vezes (0-2 vezes)
+- Gerenciar energia/sanidade razoavelmente
+- Completar o jogo
+
+Para COLAPSO:
+- Apenas deixe energia ou sanidade chegarem a 0
+- Ignore todas as pausas e ajuda
+- Beba muito café sem descansar
+
+Dicas Estratégicas:
+- Café dá energia (+boost baseado em quantidade), mas tira sanidade (-2)
+- Pausas recuperam energia (+15) e sanidade (+15)
+- Pedir ajuda recupera sanidade (+25), progresso (+20) e energia (+10)
+- Ignorar avisos dá progresso (+12), mas tira muita sanidade (-20) e energia (-10)
