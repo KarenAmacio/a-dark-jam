@@ -1221,7 +1221,7 @@
                 ["Manfred aparece do nada.", "pergunta se você quer ir pra robótica.", "você diz não, ele diz que vai buscar os troféus."],    
             ];
 
-            const index = state.characterCount % characterBlocks.length;
+            const index = state.characterCount % dialogueBlocks.length;
             const selectedBlock = dialogueBlocks[index]; 
 
             delayedLines(["", ...selectedBlock, ""], () => {
