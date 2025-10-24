@@ -1674,5 +1674,17 @@
             document.getElementById('main-menu').style.display = 'flex';
         });
 
-        // Não inicia o jogo automaticamente mais
-        // startGame(); ← REMOVIDO
+        // Carrega o som de introdução
+        const introSound = new Audio('sounds/backgroundsound.mp3');
+        introSound.volume = 0.6; 
+
+        // Quando clicar em "COMEÇAR", toca o som e inicia o jogo
+        document.getElementById('start-game').addEventListener('click', () => {
+            introSound.currentTime = 0;
+            introSound.play();
+
+            // Esconde o menu e mostra o jogo
+            document.getElementById('main-menu').style.display = 'none';
+            document.getElementById('game-container').style.display = 'block';
+
+        });
