@@ -124,11 +124,12 @@
             },
 
             askForHelp: {
-                prerequisite: (s) => (s.turnsPlayed || 0) >= 4 && (s.energy || 0) < 35 && s.lastHelpDay !== s.day,
+                prerequisite: (s) => (s.turnsPlayed || 0) >= 4 && !s.askedForHelp,
                 countKey: null,
                 limitKey: null,
                 cooldownKey: 'askForHelpCooldown'
             },
+
 
             ignoreWarning: {
                 prerequisite: (s) => {
@@ -187,12 +188,13 @@
                 cooldownKey: 'rebugGameCooldown'
             },
 
-            buildGame: {
-                prerequisite: (s) => (s.rebugCount || 0) >= (s.maxRebugs || 0)  && (s.energy || 0) >= 40 && (s.sanity || 0) >= 50,
+           buildGame: {
+                prerequisite: (s) => (s.rebugCount || 0) >= (s.maxRebugs || 0)  && (s.energy || 0) >= 40 && (s.sanity || 0) >= 50 && !s.buildPassed,
                 countKey: 'buildCount',
                 limitKey: null,
                 cooldownKey: 'buildGameCooldown'
             },
+
 
             publishGame: {
                 prerequisite: (s) => s.buildPassed === true && (s.energy || 0) >= 40 && (s.sanity || 0) >= 50,
@@ -263,11 +265,11 @@
                 state.saveAvailable = false;
                 addStoryLine("você esqueceu de salvar.", true);
                 
-                // ✅ ATIVA COOLDOWN DE 50 SEGUNDOS
-                cooldowns.saveEventCooldown = 50;
+                // ATIVA COOLDOWN DE 100 SEGUNDOS
+                cooldowns.saveEventCooldown = 100;
                 
                 renderChoices();
-            }, 1500);
+            }, 2000);
         }
 
         function quickSave() {
@@ -411,7 +413,7 @@
         function updateTime(minutes = 15) {
                 state.time += minutes;
                 
-                // ⚠️ DIA 3 COM FALTA: Deadline de meio-dia (12:00 = 720 minutos)
+                // DIA 3 COM FALTA: Deadline de meio-dia (12:00 = 720 minutos)
                 if (state.day === 3 && state.wegDecisionMade) {
                     if (state.time >= 12 * 60) {
                         // Se não publicou até meio-dia = perdeu
@@ -449,19 +451,19 @@
             //função para forçar o sono ao passar da meia-noite
         //função para forçar o sono ao passar da meia-noite
             function forceSleep() {
-                // ⚠️ DIA 3 (fim do Dia 2): Mostra escolha de faltar ou não
+                //  DIA 3 (fim do Dia 2): Mostra escolha de faltar ou não
                 if (state.day === 3 && state.publishCount === 0 && !state.wegDecisionMade) {
                     showWegChoice();
                     return;
                 }
                 
-                // ⚠️ DIA 4+: Se chegou aqui sem publicar = perdeu
+                // DIA 4+: Se chegou aqui sem publicar = perdeu
                 if (state.day >= 4 && state.publishCount === 0) {
                     showEnding('weg_loyalty');
                     return;
                 }
                 
-                // ✅ Se chegou aqui, é dia normal OU dia 3 mas já publicou
+                // Se chegou aqui, é dia normal OU dia 3 mas já publicou
                 delayedLines([
                     "",
                     "Você não percebe, mas o cansaço vence.",
@@ -477,7 +479,7 @@
                     state.coffeeLocked = true;
                     state.coffeeBrewTime = 0;
                     
-                    // ✅ SEMPRE começa às 16:00 (forceSleep só é chamado nos dias normais)
+                    // SEMPRE começa às 16:00 
                     state.time = 16 * 60;
                     
                     // Recuperação normal
@@ -496,14 +498,6 @@
         function clamp(value, min, max) {
             return Math.max(min, Math.min(max, value));
         }
-
-        /**
-         * Centraliza o fim de turno: incrementa turnsPlayed, atualiza tempo,
-         * 
-         * Chame essa função ao final de qualquer ação que consome um turno.
-         */
-
-
 
 
        // ==== ⏳ AVANÇO AUTOMÁTICO DO TURNO POR TEMPO REAL ====
@@ -535,7 +529,7 @@
                 renderChoices();
                 setTimeout(tick, 1000);
             } else {
-                tickRunning = false; // ← ADICIONE ISSO AQUI!
+                tickRunning = false; 
                 renderChoices();
             }
         }
@@ -599,7 +593,7 @@
             //evento do cachorro
             if (eventType === 'dog') {
                 createButton('ir ver', () => {
-                    disableAllButtons(); // ← ADICIONE ISSO
+                    disableAllButtons(); 
                     
                     delayedLines([
                         "",
@@ -617,7 +611,7 @@
                                 "você evita a perda e se sente mais alerta.",
                                 ""
                             ], () => {
-                                // ← Modifica state DENTRO do callback
+                                
                                 state.sanity += 10;
                                 state.energy -= 10;
                                 
@@ -807,7 +801,7 @@
                             state.sanity -= 20;
                             state.energy -= 10;
                             
-                            // ✅ ATIVA COOLDOWN DE 15 SEGUNDOS
+                            //  ATIVA COOLDOWN DE 15 SEGUNDOS
                             cooldowns.warningEventCooldown = 15;
                             
                             if (state.ignoredWarnings >= 2) {
@@ -836,7 +830,7 @@
                             state.energy += 10;
                             state.sanity += 10;
                             
-                            // ✅ ATIVA COOLDOWN DE 15 SEGUNDOS
+                            //  ATIVA COOLDOWN DE 15 SEGUNDOS
                             cooldowns.warningEventCooldown = 15;
                             
                             if (checkGameOver()) return;
@@ -854,7 +848,7 @@
             button.textContent = text;
             if (isDanger) button.className = 'danger';
             button.onclick = onClick;
-            button.disabled = false; // ← OK, só eventos usam isso
+            button.disabled = false;
             document.getElementById('choices').appendChild(button);
         }
 
@@ -918,9 +912,9 @@
             // Café sendo preparado (caso especial)
             if ((state.coffeeBrewTime || 0) > 0) {
                 createButtonWithCooldown(
-                    `preparando café...`, // ← ERA ISSO, NÃO SPRITE!
-                    null, // ← Sem onClick porque tá disabled
-                    'coffeeBrewTime' // ← Usa o coffeeBrewTime como cooldown
+                    `preparando café...`, 
+                    null, 
+                    'coffeeBrewTime' //  Usa o coffeeBrewTime como cooldown
                 );
             }
 
@@ -934,14 +928,16 @@
                 createButtonWithCooldown('fazer uma pausa', takePause, 'takePauseCooldown');
             }
 
+
             // Pedir ajuda
             if (isTaskAvailable('askForHelp')) {
                 createButtonWithCooldown(
                     'pedir ajuda', 
-                    () => { askForHelp(); state.lastHelpDay = state.day; }, // ← Precisa do wrapper
+                    askForHelp,
                     'askForHelpCooldown'
                 );
             }
+
 
             // Aviso de cansaço    
             if (isTaskAvailable('ignoreWarning')) {
@@ -950,7 +946,7 @@
                 addStoryLine("Você se sente muito cansado, seu corpo pede uma pausa.", true);
                 addStoryLine("", true);
                 showEventChoice('ignoreWarning');
-                return; // ← NÃO PRECISA DO 'true', só return
+                return; 
             }
 
             // ==== 🎯 FASES DO JOGO ====
@@ -1036,7 +1032,7 @@
 
 
                 // ==== 🪞 EVENTO DO ESPELHO ====
-                if (!state.mirrorEventShown && state.sanity < 40 && Math.random() < 0.30) {
+                if (!state.mirrorEventShown && state.sanity < 50 && Math.random() < 0.50) {
                     state.mirrorEventShown = true;
                     delayedLines([
                         "",
@@ -1124,7 +1120,7 @@
                 ["você tenta sombrear.", "fica pior.", "volta pro plano original."],
             ];
         
-            // 🎲 Sorteia um bloco aleatório
+            //  Sorteia um bloco aleatório
             const index = Math.floor(Math.random() * blocks.length);
             const selectedBlock = blocks[index];
 
@@ -1135,7 +1131,7 @@
             cooldowns.makeSpriteCooldown = 3;
 
             if (checkGameOver()) return;
-            endTurn(20);
+            endTurn(25);
             renderChoices();
         });
         }
@@ -1157,7 +1153,7 @@
                 ["pinta um canto escuro.", "alguém pode se perder ali.", "pode ser interessante."],
             ];
 
-            // 🎲 Sorteia um bloco aleatório
+            //  Sorteia um bloco aleatório
             const index = Math.floor(Math.random() * blocks.length);
             const selectedBlock = blocks[index];
 
@@ -1168,7 +1164,7 @@
                 cooldowns.makeMapCooldown = 4;
                 
                 if (checkGameOver()) return;
-                endTurn(5);
+                endTurn(25);
                 renderChoices();
             });
         }
@@ -1201,7 +1197,7 @@
                  
                 if (checkGameOver()) return;
                 renderChoices();
-                endTurn(20);
+                endTurn(25);
             });
         }
 
@@ -1221,8 +1217,9 @@
                 ["Manfred aparece do nada.", "pergunta se você quer ir pra robótica.", "você diz não, ele diz que vai buscar os troféus."],    
             ];
 
-            const index = state.characterCount % dialogueBlocks.length;
+            const index = state.dialogueCount % dialogueBlocks.length;
             const selectedBlock = dialogueBlocks[index]; 
+
 
             delayedLines(["", ...selectedBlock, ""], () => {
                 state.dialogueCount++;
@@ -1253,7 +1250,7 @@
                 ["você não tem certeza do que está fazendo.", "mas suas mãos continuam.", "músculo. memória."]
             ];
 
-            // 🎲 Sorteia um bloco aleatório
+            //  Sorteia um bloco aleatório
             const index = Math.floor(Math.random() * blocks.length);
             const selectedBlock = blocks[index];
 
@@ -1298,7 +1295,7 @@
                 ["você tenta isolar o problema.", "mas ele parece se multiplicar.", "você respira fundo e continua."],
             ];  
 
-             // 🎲 Sorteia um bloco aleatório
+             //  Sorteia um bloco aleatório
             const index = Math.floor(Math.random() * blocks.length);
             const selectedBlock = blocks[index];
 
@@ -1419,35 +1416,66 @@
             });
         }
 
-        // ==== 📞 PEDIR AJUDA ====
-        function askForHelp() {
+
+    
+        // RETIRADO DEVIDO ALTERAÇÃO FORMATAÇÃO DAS FASES 
+       function askForHelp() {
             disableAllButtons();
+            
+            // Determina em qual fase o jogador está
+            let currentPhase = '';
+            let progressAmount = 0;
+            
+            if (state.spriteCount < state.maxSprites) {
+                currentPhase = 'sprites';
+                progressAmount = Math.min(3, state.maxSprites - state.spriteCount);
+                state.spriteCount += progressAmount;
+            } else if (state.mapCount < state.maxMaps) {
+                currentPhase = 'mapas';
+                progressAmount = Math.min(3, state.maxMaps - state.mapCount);
+                state.mapCount += progressAmount;
+            } else if (state.characterCount < state.maxCharacters) {
+                currentPhase = 'personagens';
+                progressAmount = Math.min(3, state.maxCharacters - state.characterCount);
+                state.characterCount += progressAmount;
+            } else if (state.dialogueCount < state.maxDialogues) {
+                currentPhase = 'diálogos';
+                progressAmount = Math.min(3, state.maxDialogues - state.dialogueCount);
+                state.dialogueCount += progressAmount;
+            } else if (state.testCount < state.maxTests) {
+                currentPhase = 'testes';
+                progressAmount = Math.min(3, state.maxTests - state.testCount);
+                state.testCount += progressAmount;
+            } else if (state.rebugCount < state.maxRebugs) {
+                currentPhase = 'debugs';
+                progressAmount = Math.min(3, state.maxRebugs - state.rebugCount);
+                state.rebugCount += progressAmount;
+            }
+            
             const blocks = [
-                ["você abre o discord.", "digita uma mensagem.", "espera."],
-                ["você escreve 'alguém aí?'", "ninguém responde por um tempo.", "depois alguém aparece."],
-                ["você manda um print do erro.", "alguém diz 'já tentou reiniciar?'", "você tenta não gritar."],
-                ["você pergunta se mais alguém tá travado.", "descobre que sim.", "isso ajuda um pouco."],
-                ["você só escreve 'socorro'.", "alguém manda um meme.", "você ri, meio triste."],
-                ["você explica o bug.", "alguém entende.", "você sente que não tá sozinho."]
+                ["você abre o discord.", "digita uma mensagem.", "espera.", `alguém te ajuda com ${progressAmount} ${currentPhase}.`],
+                ["você escreve 'alguém aí?'", "ninguém responde por um tempo.", "depois alguém aparece.", `conseguiu ajuda com ${progressAmount} ${currentPhase}.`],
+                ["você manda um print do problema.", "alguém entende na hora.", `te ajudaram a fazer ${progressAmount} ${currentPhase}.`],
+                ["você pergunta se mais alguém tá travado.", "descobre que sim.", "trocam dicas.", `juntos, avançam ${progressAmount} ${currentPhase}.`],
+                ["você explica o bug.", "alguém manda uma solução.", `você aplica e completa ${progressAmount} ${currentPhase}.`],
+                ["você pede socorro.", "a comunidade responde.", `coletivamente, fazem ${progressAmount} ${currentPhase}.`]
             ];
             
-           
             const index = Math.floor(Math.random() * blocks.length);
             const selectedBlock = blocks[index];
 
             delayedLines(["", ...selectedBlock, ""], () => {
                 state.askedForHelp = true;
                 state.sanity += 25;
-                state.progress += 20;
                 state.energy += 10;
                 cooldowns.askForHelpCooldown = 80;
                 
                 if (checkGameOver()) return;
-                endTurn(30);
+                endTurn(40);
                 renderChoices();
-                
-        }); 
-    }   
+            }); 
+        }
+   
 
 
 
@@ -1525,8 +1553,9 @@
                         state.wegDecisionMade = true;
                         state.showingWegChoice = false;
                         eventActive = false;
+                        actionInProgress = false;
                         
-                        // ✅ RESETA PARA DIA 3, 06:00
+                        // RESETA PARA DIA 3, 06:00
                         state.time = 6 * 60;
                         state.day = 3;
                         
@@ -1540,7 +1569,10 @@
                         state.energy = Math.min(100, state.energy + 30); // Menos energia que o normal
                         
                         updateTime(0);
-                        renderChoices();
+                        setTimeout(() => {
+                            renderChoices();
+                        }, 100);
+
                     });
                 }, true); // ← true = botão danger (vermelho)
             });
@@ -1564,10 +1596,7 @@
                     "[ FIM - ENTREGA COM SUCESSO ]"
                 ],
                 weg_loyalty: [
-                    "",
-                    "o despertador toca.",
-                    "você levanta, como sempre.",
-                    "coloca a camisa da empresa.",
+
                     "",
                     "o jogo não foi publicado.",
                     "ele fica ali, inacabado.",
@@ -1585,8 +1614,8 @@
                 ],
                 weg_absent_success: [
                     "",
-                    "você ignora o despertador.",
-                    "o mundo lá fora continua.",
+                    "você faltou na WEG.",
+                    "talvez se arrependa mais que pensa.",
                     "",
                     "mas aqui dentro, você termina.",
                     "o jogo está pronto.",
@@ -1599,9 +1628,8 @@
                 ],
                weg_absent_failure: [
                     "",
-                    "você ignora o despertador.",
-                    "o mundo lá fora continua.",
-                    "mas aqui dentro, o tempo escorre como óleo.",
+                    "o mundo lá fora continuou.",
+                    "mas aqui dentro, o tempo escorreu como óleo.",
                     "",
                     "o jogo não está pronto.",
                     "você tenta, mas os dedos não respondem.",
@@ -1635,10 +1663,33 @@
                         document.body.style.opacity = '0';
                     }, endings[type].length * 800 + 2000);
                 }
+
+                // Mostra tela de créditos após o final
+                const totalTime = endings[type].length * 800 + 3000;
+                setTimeout(() => {
+                    showCredits();
+                }, totalTime);
             }, 1000);
 
             document.getElementById('choices').innerHTML = '';
         }
+
+        function showCredits() {
+            // Esconde o jogo
+            document.getElementById('game-container').style.display = 'none';
+            
+            // Mostra a tela de créditos
+            const creditsScreen = document.getElementById('credits-screen');
+            creditsScreen.style.display = 'flex';
+            creditsScreen.style.opacity = '0';
+            
+            // Fade in suave
+            setTimeout(() => {
+                creditsScreen.style.transition = 'opacity 2s';
+                creditsScreen.style.opacity = '1';
+            }, 100);
+        }
+
 
 
         // Inicialização
@@ -1675,7 +1726,7 @@
         });
 
         // Carrega o som de introdução
-        const introSound = new Audio('sounds/backgroundsound.mp3');
+        const introSound = new Audio('assets/backgroundsound.mp3');
         introSound.volume = 0.6; 
 
         // Quando clicar em "COMEÇAR", toca o som e inicia o jogo
@@ -1688,3 +1739,314 @@
             document.getElementById('game-container').style.display = 'block';
 
         });
+
+
+
+
+
+// ==== 🔧 MODO DEBUG ====
+let debugMode = false;
+
+// Cria o painel de debug uma vez só
+const debugPanel = document.createElement('div');
+debugPanel.id = 'debug-panel';
+debugPanel.innerHTML = '<h3>🔧 DEBUG MODE</h3>';
+document.body.appendChild(debugPanel);
+
+// Ativa/desativa com a tecla 'D'
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'd' || e.key === 'D') {
+        debugMode = !debugMode;
+        debugPanel.classList.toggle('active');
+        console.log('Debug mode:', debugMode ? 'ON' : 'OFF');
+    }
+});
+
+// Função helper para criar botões de debug
+function addDebugButton(text, onClick) {
+    const btn = document.createElement('button');
+    btn.textContent = text;
+    btn.onclick = onClick;
+    debugPanel.appendChild(btn);
+}
+
+// Adiciona todos os botões de debug
+addDebugButton('⚡ +3 Sprites', () => { 
+    state.spriteCount += 3; 
+    renderChoices(); 
+});
+
+addDebugButton('⚡ +3 Mapas', () => { 
+    state.mapCount += 3; 
+    renderChoices(); 
+});
+
+addDebugButton('⚡ +3 Personagens', () => { 
+    state.characterCount += 3; 
+    renderChoices(); 
+});
+
+addDebugButton('⚡ +3 Diálogos', () => { 
+    state.dialogueCount += 3; 
+    renderChoices(); 
+});
+
+addDebugButton('⚡ Skip para Testes', () => { 
+    state.spriteCount = state.maxSprites;
+    state.mapCount = state.maxMaps;
+    state.characterCount = state.maxCharacters;
+    state.dialogueCount = state.maxDialogues;
+    renderChoices();
+});
+
+addDebugButton('⚡ Skip para Build', () => { 
+    state.spriteCount = state.maxSprites;
+    state.mapCount = state.maxMaps;
+    state.characterCount = state.maxCharacters;
+    state.dialogueCount = state.maxDialogues;
+    state.testCount = state.maxTests;
+    state.rebugCount = state.maxRebugs;
+    renderChoices();
+});
+
+addDebugButton('🕐 Zerar Cooldowns', () => {
+    for (let key in cooldowns) cooldowns[key] = 0;
+    state.coffeeBrewTime = 0;
+    renderChoices();
+});
+
+addDebugButton('❤️ +50 Energia', () => { 
+    state.energy = Math.min(100, state.energy + 50); 
+    renderChoices(); 
+});
+
+addDebugButton('🧠 +50 Sanidade', () => { 
+    state.sanity = Math.min(100, state.sanity + 50); 
+    renderChoices(); 
+});
+
+addDebugButton('☕ +5 Cafés', () => { 
+    state.coffees += 5;
+    state.coffeeLocked = false;
+    renderChoices(); 
+});
+
+addDebugButton('⏰ +1 Hora', () => { 
+    updateTime(60); 
+});
+
+addDebugButton('⏰ +4 Horas', () => { 
+    updateTime(240); 
+});
+
+addDebugButton('📅 Próximo Dia', () => { 
+    state.time = 23 * 60 + 50; // 23:50
+    updateTime(15); // Força passar da meia-noite
+});
+
+addDebugButton('🐕 Evento Cachorro', () => { 
+    state.dogEventShown = false;
+    addStoryLine("", true);
+    addStoryLine("você ouve latidos lá fora.", true);
+    addStoryLine("", true);
+    showEventChoice('dog'); 
+});
+
+addDebugButton('📱 Evento Celular', () => { 
+    state.phoneEventShown = false;
+    addStoryLine("", true);
+    addStoryLine("o celular vibra na mesa.", true);
+    addStoryLine("é alguém que você conhece.", true);
+    showEventChoice('phone'); 
+});
+
+addDebugButton('🪞 Evento Espelho', () => { 
+    state.mirrorEventShown = false;
+    addStoryLine("", true);
+    addStoryLine("você olha para o espelho na cozinha...", true);
+    addStoryLine("algo está diferente.", true);
+    showEventChoice('mirror'); 
+});
+
+addDebugButton('⚠️ Evento Warning', () => { 
+    cooldowns.warningEventCooldown = 0;
+    state.energy = 30; // Força condição
+    addStoryLine("", true);
+    addStoryLine("Você se sente muito cansado, seu corpo pede uma pausa.", true);
+    addStoryLine("", true);
+    showEventChoice('ignoreWarning'); 
+});
+
+addDebugButton('💾 Forçar Save Event', () => { 
+    cooldowns.saveEventCooldown = 0;
+    state.spriteCount = 3; // Garante pré-requisito
+    triggerSaveEvent(); 
+});
+
+addDebugButton('🆘 Resetar Ajuda', () => { 
+    state.askedForHelp = false;
+    cooldowns.askForHelpCooldown = 0;
+    renderChoices();
+});
+
+addDebugButton('✅ Build Pass', () => { 
+    state.buildPassed = true;
+    renderChoices();
+});
+
+addDebugButton('🎮 Publish Pass', () => { 
+    state.buildPassed = true;
+    state.publishPassed = true;
+    renderChoices();
+});
+
+addDebugButton('🔄 Reset Completo', () => { 
+    if (confirm('Resetar o jogo completamente?')) {
+        location.reload();
+    }
+});
+
+// ==== 🎮 FUNÇÕES DE DEBUG NO CONSOLE ====
+// Use no console do navegador (F12) com: debug.comando()
+window.debug = {
+    // Mostra/esconde o painel
+    show: () => {
+        debugPanel.classList.add('active');
+        return '✅ Painel de debug ativado!';
+    },
+    
+    hide: () => {
+        debugPanel.classList.remove('active');
+        return '❌ Painel de debug desativado!';
+    },
+    
+    // Mostra o estado atual
+    state: () => {
+        console.table({
+            'Dia': state.day,
+            'Hora': `${Math.floor(state.time / 60)}:${(state.time % 60).toString().padStart(2, '0')}`,
+            'Energia': state.energy,
+            'Sanidade': state.sanity,
+            'Cafés': state.coffees,
+            'Sprites': `${state.spriteCount}/${state.maxSprites}`,
+            'Mapas': `${state.mapCount}/${state.maxMaps}`,
+            'Personagens': `${state.characterCount}/${state.maxCharacters}`,
+            'Diálogos': `${state.dialogueCount}/${state.maxDialogues}`,
+            'Testes': `${state.testCount}/${state.maxTests}`,
+            'Debugs': `${state.rebugCount}/${state.maxRebugs}`,
+            'Build Passou': state.buildPassed,
+            'Publish Passou': state.publishPassed
+        });
+        return state;
+    },
+    
+    // Acessa diretamente o state
+    get: (key) => state[key],
+    
+    // Modifica o state
+    set: (key, value) => {
+        state[key] = value;
+        renderChoices();
+        return `✅ ${key} = ${value}`;
+    },
+    
+    // Pula para uma fase específica
+    skipTo: (phase) => {
+        const phases = {
+            'sprites': () => { /* já está no início */ },
+            'mapas': () => { state.spriteCount = state.maxSprites; },
+            'personagens': () => { 
+                state.spriteCount = state.maxSprites;
+                state.mapCount = state.maxMaps;
+            },
+            'dialogos': () => { 
+                state.spriteCount = state.maxSprites;
+                state.mapCount = state.maxMaps;
+                state.characterCount = state.maxCharacters;
+            },
+            'testes': () => { 
+                state.spriteCount = state.maxSprites;
+                state.mapCount = state.maxMaps;
+                state.characterCount = state.maxCharacters;
+                state.dialogueCount = state.maxDialogues;
+            },
+            'debug': () => { 
+                state.spriteCount = state.maxSprites;
+                state.mapCount = state.maxMaps;
+                state.characterCount = state.maxCharacters;
+                state.dialogueCount = state.maxDialogues;
+                state.testCount = state.maxTests;
+            },
+            'build': () => { 
+                state.spriteCount = state.maxSprites;
+                state.mapCount = state.maxMaps;
+                state.characterCount = state.maxCharacters;
+                state.dialogueCount = state.maxDialogues;
+                state.testCount = state.maxTests;
+                state.rebugCount = state.maxRebugs;
+            },
+            'publish': () => { 
+                state.spriteCount = state.maxSprites;
+                state.mapCount = state.maxMaps;
+                state.characterCount = state.maxCharacters;
+                state.dialogueCount = state.maxDialogues;
+                state.testCount = state.maxTests;
+                state.rebugCount = state.maxRebugs;
+                state.buildPassed = true;
+            }
+        };
+        
+        if (phases[phase]) {
+            phases[phase]();
+            renderChoices();
+            return `✅ Pulou para: ${phase}`;
+        } else {
+            return `❌ Fase inválida. Use: ${Object.keys(phases).join(', ')}`;
+        }
+    },
+    
+    // Limpa todos os cooldowns
+    clearCooldowns: () => {
+        for (let key in cooldowns) cooldowns[key] = 0;
+        state.coffeeBrewTime = 0;
+        renderChoices();
+        return '✅ Todos os cooldowns zerados!';
+    },
+    
+    // God mode
+    god: () => {
+        state.energy = 100;
+        state.sanity = 100;
+        state.coffees = 10;
+        debug.clearCooldowns();
+        return '⚡ GOD MODE ATIVADO!';
+    },
+    
+    // Ajuda
+    help: () => {
+        console.log(`
+🔧 COMANDOS DE DEBUG DISPONÍVEIS:
+
+debug.show()           - Mostra o painel de debug
+debug.hide()           - Esconde o painel de debug
+debug.state()          - Mostra o estado completo do jogo
+debug.get('key')       - Pega um valor do state
+debug.set('key', val)  - Define um valor no state
+debug.skipTo('fase')   - Pula para uma fase específica
+debug.clearCooldowns() - Zera todos os cooldowns
+debug.god()            - God mode (energia/sanidade máxima)
+debug.help()           - Mostra esta ajuda
+
+FASES DISPONÍVEIS PARA SKIP:
+sprites, mapas, personagens, dialogos, testes, debug, build, publish
+
+EXEMPLO DE USO:
+debug.skipTo('build')
+debug.set('energy', 100)
+debug.god()
+        `);
+        return '📖 Ajuda exibida no console!';
+    }
+};
+
+console.log('🔧 Debug mode carregado! Digite "debug.help()" no console para ver os comandos.');
