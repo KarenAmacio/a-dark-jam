@@ -76,10 +76,10 @@ debug.clearCooldowns()     // Zera cooldowns
 
 ## 🏆 Game Jam Details
 
-- **Evento**: Game Jam CatolicaSC 2024
+- **Evento**: Game Jam CatolicaSC 2025
 - **Tema**: [tema da jam]
-- **Duração**: 48 horas
-- **Time**: Solo dev
+- **Duração**: 20 a 24 de outubro
+- **Time**: Karen Amancio e Esther Riggol - Eng de Software 2° período
 
 ## 📝 Licença
 
